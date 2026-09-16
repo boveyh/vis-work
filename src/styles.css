@@ -60,8 +60,8 @@ h1, h2, h3 { line-height: 1.25; }
 button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
 
 /* ---------- top navigation ---------- */
-.site-nav { position: sticky; top: 0; z-index: 20; height: 64px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding: 0 max(20px, calc((100vw - 1280px) / 2)); border-bottom: 1px solid color-mix(in srgb, #ffffff 14%, transparent); background: var(--navy); color: #eef2f8; }
-.storage-notice { margin: 0; padding: 12px max(20px, calc((100vw - 1280px) / 2)); border-bottom: 1px solid color-mix(in srgb, var(--danger) 34%, var(--line)); background: color-mix(in srgb, var(--danger) 10%, var(--bg)); font-size: 13.5px; line-height: 1.6; }
+.site-nav { position: sticky; top: 0; z-index: 20; height: 64px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding: 0 clamp(16px, 2vw, 28px); border-bottom: 1px solid color-mix(in srgb, #ffffff 14%, transparent); background: var(--navy); color: #eef2f8; }
+.storage-notice { margin: 0; padding: 12px clamp(16px, 2vw, 28px); border-bottom: 1px solid color-mix(in srgb, var(--danger) 34%, var(--line)); background: color-mix(in srgb, var(--danger) 10%, var(--bg)); font-size: 13.5px; line-height: 1.6; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; }
 .brand-mark { width: 20px; height: 20px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; }
 .brand-mark i { display: block; background: var(--text); border-radius: 3px; }
@@ -222,8 +222,7 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .learning-shell {
   grid-template-columns: 220px minmax(0, 1fr) minmax(340px, 380px);
   grid-template-areas: "nav intro board" "nav body board" "nav check board";
-  width: min(100%, 1440px);
-  margin-inline: auto;
+  width: 100%;
   background: var(--surface);
 }
 .learning-shell .lesson-nav { grid-area: nav; background: var(--navy); color: #e9eef6; border-right: 0; }
@@ -423,6 +422,12 @@ footer p { color: var(--muted); margin: 0; font-size: 14px; grid-column: 1; }
 footer a { grid-column: 2; grid-row: 1 / 3; color: var(--accent); font-weight: 700; }
 
 /* ---------- responsive ---------- */
+@media (min-width: 1600px) {
+  /* Wide screens give the extra width to the board and the reading measure instead of leaving blank space. */
+  .learning-shell { grid-template-columns: 240px minmax(0, 1fr) minmax(440px, 560px); }
+  .learning-block, .full-code, .demo-lesson-block { max-width: 880px; }
+}
+
 @media (max-width: 1100px) {
   .site-nav { grid-template-columns: 1fr auto; }
   .site-nav nav { display: none; }
