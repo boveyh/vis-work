@@ -785,6 +785,7 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
     <section className="learning-block mistake-block callout" data-tone="warn"><h3 className="callout-title"><Lightbulb weight="fill" />{read(ui.mistakes, locale)}</h3><ul>{lesson.mistakes.map((mistake) => <li key={mistake.zh}>{read(mistake, locale)}</li>)}</ul></section>
     <section className="learning-block property-table" id="keypoints" tabIndex={-1}>
       <h2>{zh ? "属性速查" : "Property reference"}<AnchorButton target="keypoints" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <div className="table-scroll">
       <table>
         <thead><tr><th scope="col">{zh ? "属性 / 写法" : "Property"}</th><th scope="col">{zh ? "作用" : "What it does"}</th><th scope="col">{zh ? "对应概念" : "Concept"}</th></tr></thead>
         <tbody>{lesson.keyPoints.map((point) => {
@@ -796,11 +797,12 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
           </tr>;
         })}</tbody>
       </table>
-      {lesson.id === "patterns" && <table className="tool-choice">
+      </div>
+      {lesson.id === "patterns" && <div className="table-scroll"><table className="tool-choice">
         <caption>{zh ? "怎么选布局工具" : "Choosing a layout tool"}</caption>
         <thead><tr><th scope="col">{zh ? "需求" : "Need"}</th><th scope="col">{zh ? "推荐" : "Tool"}</th><th scope="col">{zh ? "原因" : "Why"}</th></tr></thead>
         <tbody>{toolChoices().map((row) => <tr key={row.tool}><td>{read(row.need, locale)}</td><td><code>{row.tool}</code></td><td>{read(row.reason, locale)}</td></tr>)}</tbody>
-      </table>}
+      </table></div>}
     </section>
     <section className="demo-lesson-block demo-instructions" id="step-task" tabIndex={-1}>
       <div className="demo-brief"><span className="step-label">03 · {locale === "zh" ? "带着任务操作" : "Operate with a task"}</span><h2>{read(task.title, locale)}</h2><p>{read(task.brief, locale)}</p><div className="task-levels"><span><b>1</b>{locale === "zh" ? "跟做：对照目标调整参数" : "Follow: match the target"}</span><span><b>2</b>{locale === "zh" ? "排错：根据未满足条件修正" : "Debug: fix unmet conditions"}</span><span><b>3</b>{locale === "zh" ? "迁移：用观察结果回答下一题" : "Transfer: answer from the result"}</span></div><strong>{locale === "zh" ? "不要靠试遍所有选项。每次只改一个参数，说清它改变的是方向、分布、尺寸还是间距。" : "Do not brute-force every option. Change one control at a time and name whether it affects direction, distribution, size or spacing."}</strong></div>
