@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Copy, Lightbulb, List, LockKey, Moon, Play, Sun, X } from "@phosphor-icons/react";
 import { lessons, stageOf, stages, t, ui, type Copy as LocalizedCopy, type DemoKind, type Lesson, type Locale } from "./data";
@@ -165,12 +165,13 @@ function Shell({ children }: { children: ReactNode }) {
       <Link className="brand" to={`/${locale}`} aria-label="Layout Lab home"><span className="brand-mark"><i /><i /><i /></span>Layout Lab</Link>
       <nav aria-label={locale === "zh" ? "主导航" : "Main navigation"}>
         <Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link>
+        <Link to={`/${locale}/questions`}>{read(ui.navQuestions, locale)}</Link>
         <Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link>
         <Link to={`/${locale}/about`}>{read(ui.navAbout, locale)}</Link>
       </nav>
       <div className="nav-actions">
         <Link className="nav-progress" title={read(ui.progress, locale)} to={`/${locale}${nextHref}`}>{completedCount}/{totalCount}</Link>
-        <details className="mobile-menu"><summary aria-label={locale === "zh" ? "打开菜单" : "Open menu"}><List /></summary><div><Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link><Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link><Link to={`/${locale}/about`}>{read(ui.navAbout, locale)}</Link></div></details>
+        <details className="mobile-menu"><summary aria-label={locale === "zh" ? "打开菜单" : "Open menu"}><List /></summary><div><Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link><Link to={`/${locale}/questions`}>{read(ui.navQuestions, locale)}</Link><Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link><Link to={`/${locale}/about`}>{read(ui.navAbout, locale)}</Link></div></details>
         <button className="icon-button language" onClick={switchLocale} aria-label={locale === "zh" ? "Switch to English" : "切换到中文"}>{locale === "zh" ? "中 / EN" : "EN / 中"}</button>
         <button className="icon-button" onClick={() => setDark(!dark)} aria-label={dark ? "Use light theme" : "Use dark theme"}>{dark ? <Sun /> : <Moon />}</button>
       </div>
@@ -357,10 +358,121 @@ function Course() {
       <p className="eyebrow">LAYOUT CURRICULUM</p>
       <h1>{read(ui.navCourse, locale)}</h1>
       <p>{locale === "zh" ? "8 个章节按四个阶段推进，从页面结构一直到完整的响应式项目。" : "Eight chapters across four stages, from page structure to a complete responsive project."}</p>
+      <p className="page-header-link"><Link className="text-link" to={`/${locale}/questions`}>{locale === "zh" ? "查看全部 72 道题目" : "Browse all 72 questions"}<ArrowRight /></Link></p>
     </header>
     <ChapterList locale={locale} done={done} practiced={practiced} chapterPassed={chapterPassed} stagePassed={stagePassed} />
   </main><Footer locale={locale} /></Shell>;
 }
+function BankQuestion({ question, index, locale, revealed, onToggle }: { question: QuizQuestion; index: number; locale: Locale; revealed: boolean; onToggle: () => void }) {
+  const zh = locale === "zh";
+  return <article className="bank-question">
+    <header><span className="bank-num">{String(index + 1).padStart(2, "0")}</span><h4>{read(question.prompt, locale)}</h4></header>
+    <ol className="bank-options">{question.options.map((option, optionIndex) => <li className={revealed && optionIndex === question.answer ? "is-answer" : ""} key={option.zh}>
+      {revealed && optionIndex === question.answer ? <Check weight="bold" /> : <i aria-hidden="true" />}
+      <span>{read(option, locale)}</span>
+      {revealed && optionIndex === question.answer && <em>{zh ? "正确答案" : "Answer"}</em>}
+    </li>)}</ol>
+    {revealed && <div className="bank-explain"><p><b>{zh ? "知识点" : "Concept"}</b>{read(question.concept, locale)}</p><p><b>{zh ? "引导" : "Guide"}</b>{read(question.hint, locale)}</p></div>}
+    <div className="bank-question-actions"><button className="text-button" onClick={onToggle} aria-expanded={revealed}>{revealed ? (zh ? "隐藏答案" : "Hide answer") : (zh ? "显示答案" : "Show answer")}</button></div>
+  </article>;
+}
+
+type BankGroupData = {
+  stage: (typeof stages)[number];
+  chapters: { lesson: Lesson; quiz: Quiz; questions: QuizQuestion[] }[];
+  stageQuiz?: Quiz;
+  stageQuestions: QuizQuestion[];
+};
+
+function BankGroup({ group, locale, chapterPassed, stagePassed, revealed, onToggle }: { group: BankGroupData; locale: Locale; chapterPassed: string[]; stagePassed: string[]; revealed: Record<string, boolean>; onToggle: (id: string) => void }) {
+  const zh = locale === "zh";
+  const questionsOf = (questions: QuizQuestion[]) => questions.map((question, index) => <BankQuestion question={question} index={index} locale={locale} revealed={Boolean(revealed[question.id])} onToggle={() => onToggle(question.id)} key={question.id} />);
+  return <section className="bank-group">
+    <header className="bank-group-head"><span className="stage-index">{String(stages.indexOf(group.stage) + 1).padStart(2, "0")}</span><div><h2>{read(group.stage.name, locale)}</h2><p>{read(group.stage.desc, locale)}</p></div></header>
+    {group.chapters.map((entry) => <article className="bank-set" key={entry.lesson.id}>
+      <header className="bank-set-head">
+        <div><span>{String(entry.lesson.order).padStart(2, "0")} · {read(ui.chapter, locale)}</span><h3>{read(entry.lesson.title, locale)}</h3><p>{zh ? `章末小测 · ${entry.questions.length} 题` : `Chapter quiz · ${entry.questions.length} question(s)`}</p></div>
+        <span className={`bank-state ${chapterPassed.includes(entry.lesson.id) ? "is-passed" : ""}`}>{chapterPassed.includes(entry.lesson.id) ? <><Check weight="bold" />{zh ? "小测已通过" : "Quiz passed"}</> : (zh ? "小测未通过" : "Quiz not passed")}</span>
+        <Link className="text-button" to={`/${locale}/lesson/${entry.lesson.id}`}>{zh ? "去学习本章" : "Study chapter"}<ArrowRight /></Link>
+      </header>
+      <div className="bank-questions">{questionsOf(entry.questions)}</div>
+    </article>)}
+    {group.stageQuiz && group.stageQuestions.length > 0 && <article className="bank-set is-stage">
+      <header className="bank-set-head">
+        <div><span>{zh ? "阶段综合测试" : "Stage test"}</span><h3>{zh ? `${read(group.stage.name, locale)}阶段综合测试` : `${read(group.stage.name, locale)} stage test`}</h3><p>{zh ? `${group.stageQuestions.length} 题 · 覆盖本阶段全部章节` : `${group.stageQuestions.length} questions across the stage`}</p></div>
+        <span className={`bank-state ${stagePassed.includes(group.stage.key) ? "is-passed" : ""}`}>{stagePassed.includes(group.stage.key) ? <><Check weight="bold" />{zh ? "已通过" : "Passed"}</> : (zh ? "未通过" : "Not passed")}</span>
+        <Link className="text-button" to={`/${locale}/stage/${group.stage.key}/test`}>{zh ? "去参加测试" : "Take the test"}<ArrowRight /></Link>
+      </header>
+      <div className="bank-questions">{questionsOf(group.stageQuestions)}</div>
+    </article>}
+  </section>;
+}
+
+function QuestionBank() {
+  const locale = localeOf(useParams().locale);
+  const zh = locale === "zh";
+  const { chapterPassed, stagePassed } = useProgress();
+  const [stageKey, setStageKey] = useState("all");
+  const [chapterId, setChapterId] = useState("all");
+  const [query, setQuery] = useState("");
+  const [onlyUnpassed, setOnlyUnpassed] = useState(false);
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+
+  const matches = (question: QuizQuestion) => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    return [question.prompt, question.hint, question.concept, ...question.options].some((copy) => read(copy, locale).toLowerCase().includes(needle));
+  };
+  const groups: BankGroupData[] = stages.map((stage) => {
+    const stageQuiz = stageQuizzes[stage.key] as Quiz | undefined;
+    return {
+      stage,
+      chapters: lessons.filter((lesson) => lesson.stage === stage.key).flatMap((lesson) => {
+        const quiz = chapterQuizzes[lesson.id] as Quiz | undefined;
+        return quiz ? [{ lesson, quiz, questions: quiz.questions.filter(matches) }] : [];
+      }),
+      stageQuiz,
+      stageQuestions: (stageQuiz?.questions ?? []).filter(matches),
+    };
+  });
+  const totalQuestions = groups.reduce((sum, group) => sum + group.chapters.reduce((n, entry) => n + entry.quiz.questions.length, 0) + (group.stageQuiz?.questions.length ?? 0), 0);
+  const allIds = groups.flatMap((group) => [...group.chapters.flatMap((entry) => entry.quiz.questions), ...(group.stageQuiz?.questions ?? [])]).map((question) => question.id);
+  const visibleGroups = groups
+    .filter((group) => stageKey === "all" || group.stage.key === stageKey)
+    .map((group) => ({
+      ...group,
+      chapters: group.chapters
+        .filter((entry) => (chapterId === "all" || entry.lesson.id === chapterId) && (!onlyUnpassed || !chapterPassed.includes(entry.lesson.id)))
+        .filter((entry) => entry.questions.length > 0),
+      stageQuestions: (chapterId === "all" || group.chapters.some((entry) => entry.lesson.id === chapterId)) && (!onlyUnpassed || !stagePassed.includes(group.stage.key)) ? group.stageQuestions : [],
+    }))
+    .filter((group) => group.chapters.length > 0 || group.stageQuestions.length > 0);
+  const shown = visibleGroups.reduce((sum, group) => sum + group.chapters.reduce((n, entry) => n + entry.questions.length, 0) + group.stageQuestions.length, 0);
+  const toggle = (id: string) => setRevealed((previous) => ({ ...previous, [id]: !previous[id] }));
+
+  return <Shell><main className="page-main bank-page">
+    <header className="page-header">
+      <p className="eyebrow">QUESTION BANK</p>
+      <h1>{read(ui.navQuestions, locale)}</h1>
+      <p>{zh ? `共 ${totalQuestions} 道单选题：8 章各 4 道章末题、4 个阶段各 10 道综合题，两部分题目不重复。答案默认隐藏，先自测再展开。` : `All ${totalQuestions} single-choice questions: four per chapter quiz and ten per stage test, with no reused prompts. Answers start hidden so you can self-test first.`}</p>
+    </header>
+    <section className="bank-toolbar" aria-label={zh ? "筛选与搜索" : "Filters and search"}>
+      <label>{zh ? "阶段" : "Stage"}<select value={stageKey} onChange={(event) => { setStageKey(event.target.value); setChapterId("all"); }}><option value="all">{zh ? "全部阶段" : "All stages"}</option>{stages.map((stage) => <option value={stage.key} key={stage.key}>{read(stage.name, locale)}</option>)}</select></label>
+      <label>{zh ? "章节" : "Chapter"}<select value={chapterId} onChange={(event) => setChapterId(event.target.value)}><option value="all">{zh ? "全部章节" : "All chapters"}</option>{lessons.map((lesson) => <option value={lesson.id} key={lesson.id}>{read(lesson.title, locale)}</option>)}</select></label>
+      <label className="bank-search">{zh ? "搜索" : "Search"}<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={zh ? "题干 / 选项 / 知识点关键词" : "Keyword in prompt, options or concept"} /></label>
+      <label className="bank-toggle"><input type="checkbox" checked={onlyUnpassed} onChange={(event) => setOnlyUnpassed(event.target.checked)} />{zh ? "只看未通过" : "Unpassed only"}</label>
+      <div className="bank-actions">
+        <button className="text-button" onClick={() => setRevealed(Object.fromEntries(allIds.map((id) => [id, true])))}>{zh ? "全部显示答案" : "Show all answers"}</button>
+        <button className="text-button" onClick={() => setRevealed({})}>{zh ? "全部隐藏答案" : "Hide all answers"}</button>
+      </div>
+    </section>
+    <p className="bank-summary" aria-live="polite">{zh ? `当前显示 ${shown} / ${totalQuestions} 题` : `Showing ${shown} of ${totalQuestions} questions`}</p>
+    {visibleGroups.length === 0
+      ? <p className="bank-empty">{zh ? "没有符合条件的题目，换个筛选或关键词试试。" : "No questions match these filters. Try another keyword."}</p>
+      : visibleGroups.map((group) => <BankGroup group={group} locale={locale} chapterPassed={chapterPassed} stagePassed={stagePassed} revealed={revealed} onToggle={toggle} key={group.stage.key} />)}
+  </main><Footer locale={locale} /></Shell>;
+}
+
 type LearningActivity = {
   prediction: LocalizedCopy;
   predictionOptions: LocalizedCopy[];
@@ -445,9 +557,21 @@ function writeLessonDraft(lessonId: string, patch: Partial<LessonDraft>) {
   writeRaw(`layout-lab-lesson-draft:${lessonId}`, JSON.stringify({ v: LESSON_DRAFT_VERSION, prediction: null, answer: null, checked: false, ...base, ...patch }));
 }
 
+const BOARD_MIN = 320;
+const BOARD_MAX = 560;
+const READING_MIN = 520;
+const BOARD_HANDLE = 12;
+
+const readBoardWidth = () => {
+  const raw = readRaw("layout-lab-board-width");
+  const saved = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(saved) ? Math.max(BOARD_MIN, Math.min(BOARD_MAX, Math.round(saved))) : null;
+};
+
 function QuizQuestionView({ question, index, locale, answer, submitted, onAnswer }: { question: QuizQuestion; index: number; locale: Locale; answer?: number; submitted: boolean; onAnswer: (answer: number) => void }) {
   const correct = submitted && answer === question.answer;
   const wrong = submitted && answer !== undefined && answer !== question.answer;
+  const guiding = !submitted && answer !== undefined;
   return <fieldset className={`quiz-question ${correct ? "is-correct" : ""} ${wrong ? "is-wrong" : ""}`}>
     <legend><span>{String(index + 1).padStart(2, "0")}</span>{read(question.prompt, locale)}</legend>
     <div className="quiz-options">
@@ -457,6 +581,7 @@ function QuizQuestionView({ question, index, locale, answer, submitted, onAnswer
         <span>{read(option, locale)}</span>
       </label>)}
     </div>
+    {guiding && <p className="quiz-guide"><Lightbulb weight="fill" /><span><b>{locale === "zh" ? "引导" : "Guide"}</b>{read(question.hint, locale)}</span></p>}
     {wrong && <p className="quiz-hint"><Lightbulb weight="fill" /><span><b>{locale === "zh" ? "提示" : "Hint"}</b>{read(question.hint, locale)} <em>{locale === "zh" ? `回顾：${read(question.concept, locale)}` : `Review: ${read(question.concept, locale)}`}</em></span></p>}
     {correct && <p className="quiz-correct"><Check weight="bold" />{locale === "zh" ? "回答正确" : "Correct"}</p>}
   </fieldset>;
@@ -515,7 +640,7 @@ function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson;
       <h2>{read(lesson.goal, locale)}</h2>
       <p>{read(lesson.summary, locale)} {locale === "zh" ? "下面四步先建立判断，再用同一个演示验证，最后把观察结果用于练习。" : "The four steps below build the idea, verify it in one demo, and reuse the observation in a short exercise."}</p>
     </section>
-    <section className="learning-block prediction-block">
+    <section className="learning-block prediction-block" id="step-prediction">
       <span className="step-label">01 · {locale === "zh" ? "建立初始判断" : "Make an initial judgement"}</span>
       <h3>{locale === "zh" ? "先预测，再读解释" : "Predict before reading"}</h3>
       <p>{read(activity.prediction, locale)}</p>
@@ -565,13 +690,13 @@ function LessonCheck({ lesson, locale, isDone, savedEvidence, onComplete, onEvid
   const submit = () => {
     setChecked(true);
     writeLessonDraft(lesson.id, { checked: true });
-    if (predicted && taskPassed && answer === activity.checkAnswer) {
+    if (predicted && tried && answer === activity.checkAnswer) {
       onEvidence({ instantCheckPassed: true });
       onComplete();
     }
   };
   return <>
-    <section className="learning-block practice-check">
+    <section className="learning-block practice-check" id="step-check">
       <span className="step-label">04 · {locale === "zh" ? "用刚才的观察作答" : "Use what you observed"}</span>
       <h2>{locale === "zh" ? "即时检查 · 单选题" : "Instant check · single choice"}</h2>
       <h3>{read(activity.check, locale)}</h3>
@@ -591,8 +716,57 @@ function LearningLessonPage() {
   const lesson = lessons.find((item) => item.id === lessonId);
   const [demoState, setDemoState] = useState(initialDemo);
   const { sections, done, evidence, chapterPassed, stagePassed, toggle, markPracticed, recordEvidence, passChapter, completedCount, totalCount } = useProgress();
+  const savedEvidence = lesson ? evidence[lesson.id] : undefined;
+  const evidenceComplete = Boolean(savedEvidence?.predicted && savedEvidence?.practiced && savedEvidence?.instantCheckPassed);
+  const currentId = lesson ? sectionId(lesson) : "";
+  const sectionDone = Boolean(lesson) && sections.includes(currentId);
+  /* The board column is resizable between a readable minimum and a bounded maximum. */
+  const [boardWidth, setBoardWidth] = useState<number | null>(readBoardWidth);
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window === "undefined" ? 1440 : window.innerWidth));
+  const dragState = useRef<{ startX: number; startWidth: number } | null>(null);
+  useEffect(() => {
+    const syncViewport = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", syncViewport);
+    return () => window.removeEventListener("resize", syncViewport);
+  }, []);
+  const navColumn = viewportWidth > 1100 ? 220 : 168;
+  const maxBoardWidth = Math.max(BOARD_MIN, Math.min(BOARD_MAX, viewportWidth - navColumn - BOARD_HANDLE - READING_MIN));
+  const boardWidthInUse = Math.min(boardWidth ?? (viewportWidth >= 1600 ? 480 : 380), maxBoardWidth);
+  const applyBoardWidth = (next: number) => {
+    const clamped = Math.max(BOARD_MIN, Math.min(maxBoardWidth, Math.round(next)));
+    setBoardWidth(clamped);
+    writeRaw("layout-lab-board-width", String(clamped));
+  };
+  const resetBoardWidth = () => { setBoardWidth(null); removeRaw("layout-lab-board-width"); };
+  const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    dragState.current = { startX: event.clientX, startWidth: boardWidthInUse };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+  const moveDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragState.current) return;
+    applyBoardWidth(dragState.current.startWidth + (dragState.current.startX - event.clientX));
+  };
+  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragState.current) return;
+    dragState.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+  /* The three recorded evidence items can be complete while the completion flag is missing
+     (board was reset, or the student answered the instant check on a return visit). Heal it
+     instead of leaving the chapter quiz locked. */
+  useEffect(() => {
+    if (!lesson || !evidenceComplete || sections.includes(currentId)) return;
+    toggle(currentId);
+  }, [lesson, currentId, evidenceComplete, sections, toggle]);
+  const quizOpen = sectionDone || evidenceComplete;
+  const openGaps = [
+    { id: "step-prediction", label: locale === "zh" ? "01 预测" : "01 Prediction", done: sectionDone || Boolean(savedEvidence?.predicted) },
+    { id: "step-board", label: locale === "zh" ? "教学板目标" : "Board target", done: sectionDone || Boolean(savedEvidence?.practiced) },
+    { id: "step-check", label: locale === "zh" ? "即时题" : "Instant check", done: sectionDone || Boolean(savedEvidence?.instantCheckPassed) },
+  ].filter((gap) => !gap.done);
+  const jumpTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
   if (!lesson) return <Shell><main className="page-main"><header className="page-header"><h1>{read(ui.notFound, locale)}</h1><Link className="button" to={`/${locale}/course`}>{read(ui.backToCourse, locale)}</Link></header></main></Shell>;
-  const currentId = sectionId(lesson);
   const lessonIndex = lessons.indexOf(lesson);
   const nextHref = lessons[lessonIndex + 1] ? `/${locale}/lesson/${lessons[lessonIndex + 1].id}` : undefined;
   const stage = stageOf(lesson.stage);
@@ -608,7 +782,7 @@ function LearningLessonPage() {
       recordEvidence(lesson.id, { practiced: true });
     }
   };
-  return <Shell><main className="lesson-shell learning-shell">
+  return <Shell><main className="lesson-shell learning-shell" style={{ "--board-w": `${boardWidthInUse}px` } as CSSProperties}>
     <aside className="lesson-nav">
       <Link className="back-link" to={`/${locale}`}><ArrowLeft />{locale === "zh" ? "学习路径" : "Learning path"}</Link>
       <div className="lesson-progress"><span>{read(ui.progress, locale)}</span><strong>{completedCount} / {totalCount}</strong></div>
@@ -620,7 +794,27 @@ function LearningLessonPage() {
       <div className="lesson-title"><div className="lesson-meta"><span className="tag">{read(stage.name, locale)}</span><span>{lesson.order} / {lessons.length} {read(ui.chapter, locale)}</span><span>{locale === "zh" ? "4 个概念 · 1 次操作 · 1 道检验" : "4 concepts · 1 demo · 1 check"}</span><span>{read(lesson.duration, locale)}</span></div><h1>{read(lesson.title, locale)}</h1><p className="lesson-goal"><strong>{read(ui.goalLabel, locale)}</strong>{read(lesson.goal, locale)}</p></div>
       <LessonIntro lesson={lesson} locale={locale} activity={activity} onEvidence={(patch) => recordEvidence(lesson.id, patch)} />
     </section>
-    <aside className="lesson-board">
+    <div
+      className="board-resizer"
+      role="separator"
+      aria-orientation="vertical"
+      tabIndex={0}
+      aria-label={locale === "zh" ? "调整教学板宽度" : "Resize the synchronized board"}
+      aria-valuemin={BOARD_MIN}
+      aria-valuemax={maxBoardWidth}
+      aria-valuenow={boardWidthInUse}
+      title={locale === "zh" ? "拖动调整教学板宽度，双击恢复默认" : "Drag to resize the board, double-click to reset"}
+      onPointerDown={startDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onDoubleClick={resetBoardWidth}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") { event.preventDefault(); applyBoardWidth(boardWidthInUse + 16); }
+        if (event.key === "ArrowRight") { event.preventDefault(); applyBoardWidth(boardWidthInUse - 16); }
+      }}
+    />
+    <aside className="lesson-board" id="step-board">
       <div className="lesson-board-heading"><span>{locale === "zh" ? "同步教学板" : "Synchronized board"}</span><strong>{read(taskFor(lesson).title, locale)}</strong><p>{locale === "zh" ? "正文和教学板使用同一个任务。调整参数后，完成状态会立即同步。" : "The lesson and board share one task. Progress updates as you adjust the controls."}</p></div>
       <ConceptPlayground key={lesson.id} lesson={lesson} locale={locale} onChange={updateDemo} />
     </aside>
@@ -628,11 +822,11 @@ function LearningLessonPage() {
       <LessonStudy lesson={lesson} locale={locale} />
     </section>
     <section className="lesson-flow learning-check">
-      <LessonCheck lesson={lesson} locale={locale} isDone={sections.includes(currentId)} savedEvidence={evidence[lesson.id]} onComplete={() => { if (!sections.includes(currentId)) toggle(currentId); }} onEvidence={(patch) => recordEvidence(lesson.id, patch)} demoState={demoState} />
-      {!quiz ? <section className="quiz-locked quiz-data-missing"><X /><div><h2>{locale === "zh" ? "测验数据缺失" : "Quiz data missing"}</h2><p>{locale === "zh" ? "本章题目暂时不可用，因此无法记录通过。刷新页面后重试；已通过的历史记录不会被删除。" : "This chapter's questions are unavailable, so a pass cannot be recorded. Refresh and retry; existing passes stay saved."}</p></div></section> : sections.includes(currentId) ? <>
+      <LessonCheck lesson={lesson} locale={locale} isDone={sectionDone} savedEvidence={savedEvidence} onComplete={() => { if (!sectionDone) toggle(currentId); }} onEvidence={(patch) => recordEvidence(lesson.id, patch)} demoState={demoState} />
+      {!quiz ? <section className="quiz-locked quiz-data-missing"><X /><div><h2>{locale === "zh" ? "测验数据缺失" : "Quiz data missing"}</h2><p>{locale === "zh" ? "本章题目暂时不可用，因此无法记录通过。刷新页面后重试；已通过的历史记录不会被删除。" : "This chapter's questions are unavailable, so a pass cannot be recorded. Refresh and retry; existing passes stay saved."}</p></div></section> : quizOpen ? <>
         <QuizPanel quiz={quiz} locale={locale} passed={chapterPassed.includes(lesson.id)} onPass={() => passChapter(lesson.id)} title={locale === "zh" ? `${read(lesson.title, locale)}小测` : `${read(lesson.title, locale)} quiz`} intro={locale === "zh" ? "4 道基础选择题，全部答对后通过本章。答错会给出提示，不会直接公布答案。" : "Four basic questions. Answer all correctly to pass; wrong answers receive hints, not solutions."} />
         {chapterPassed.includes(lesson.id) && <div className="after-quiz-action">{isStageEnd ? <Link className="button" to={`/${locale}/stage/${lesson.stage}/test`}>{stagePassed.includes(lesson.stage) ? (locale === "zh" ? "重新练习阶段测试" : "Practise the stage test") : stageUnlocked ? (locale === "zh" ? "开始阶段综合测试" : "Start the stage test") : (locale === "zh" ? "查看阶段要求" : "View stage requirements")}<ArrowRight /></Link> : nextHref && <Link className="button" to={nextHref}>{locale === "zh" ? "进入下一章" : "Next chapter"}<ArrowRight /></Link>}</div>}
-      </> : <section className="quiz-locked"><LockKey /><div><h2>{locale === "zh" ? "章末小测尚未开放" : "Chapter quiz locked"}</h2><p>{locale === "zh" ? "先完成预测、教学板目标和即时选择题。" : "Complete the prediction, board target and instant check first."}</p></div></section>}
+      </> : <section className="quiz-locked"><LockKey /><div><h2>{locale === "zh" ? "章末小测尚未开放" : "Chapter quiz locked"}</h2><p>{locale === "zh" ? `还剩 ${openGaps.length} 步就能开始，点一下直接跳过去：` : `${openGaps.length} step(s) left. Jump straight to them:`}</p><div className="locked-steps">{openGaps.map((gap) => <button className="step-jump" key={gap.id} onClick={() => jumpTo(gap.id)}>{gap.label}<ArrowRight /></button>)}</div></div></section>}
     </section>
   </main></Shell>;
 }
@@ -703,6 +897,7 @@ export default function App() {
     <Route path="/:locale/course" element={<Course />} />
     <Route path="/:locale/lesson/:lessonId" element={<LearningLessonPage />} />
     <Route path="/:locale/stage/:stageKey/test" element={<StageTestPage />} />
+    <Route path="/:locale/questions" element={<QuestionBank />} />
     <Route path="/:locale/challenge" element={<ChallengePage />} />
     <Route path="/:locale/about" element={<About />} />
     <Route path="*" element={<Navigate to={`/${preferred}`} replace />} />

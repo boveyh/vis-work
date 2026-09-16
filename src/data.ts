@@ -482,6 +482,7 @@ export const lessons: Lesson[] = [
 
 export const ui = {
   navCourse: t("课程地图", "Course map"),
+  navQuestions: t("题库合集", "Question bank"),
   navChallenge: t("布局挑战", "Challenge"),
   navAbout: t("学习说明", "About"),
   continue: t("继续学习", "Continue"),
