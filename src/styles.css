@@ -313,6 +313,25 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .learning-block h3 { font-size: 19px; margin: 0 0 var(--sp-3); }
 .learning-block p { color: var(--muted); font-size: 15.5px; line-height: 1.75; margin: 0; }
 .learning-block code, .quiz-question code, .bank-explain code, .bank-options code { padding: 1px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--code-accent); font: 600 .92em ui-monospace, "Cascadia Code", monospace; }
+/* Concept extras: why / minimal example / pitfall / further reading, plus scenario and checklist. */
+.concept-why { display: grid; gap: 2px; margin: var(--sp-3) 0 0; }
+.concept-why b { color: var(--accent); font-size: 11.5px; }
+.concept-snippet { margin-top: var(--sp-3); }
+.concept-snippet pre { font-size: 12.5px; }
+.concept-pitfall { display: grid; gap: 2px; margin: var(--sp-3) 0 0; }
+.concept-pitfall b { color: var(--danger); font-size: 11.5px; }
+.concept-refs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: var(--sp-3) 0 0; color: var(--muted); font-size: 12px; }
+.concept-refs a { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--code-accent); }
+.concept-refs a:hover { border-color: var(--code-accent); }
+.scenario-callout { display: grid; gap: 2px; margin-top: var(--sp-3); }
+.scenario-callout b { color: var(--navy); font-size: 11.5px; }
+.lesson-checklist { margin-top: var(--sp-5); padding: var(--sp-4) var(--sp-5); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.lesson-checklist h3 { margin: 0 0 var(--sp-2); font-size: 15px; }
+.lesson-checklist ul { margin: 0; padding-left: var(--sp-5); color: var(--muted); font-size: 14.5px; line-height: 1.8; }
+.keypoint-detail { display: block; margin-top: var(--sp-1); color: var(--muted); font-size: 13px; font-style: normal; }
+.property-table th:last-child, .property-table td:last-child { width: 1%; }
+.keypoint-concept { color: var(--accent); font: 700 12px ui-monospace, monospace; white-space: nowrap; }
+.keypoint-concept.is-extra { color: var(--muted); font-weight: 600; }
 /* Property reference table. */
 .property-table table { width: 100%; margin-top: var(--sp-3); border: 1px solid var(--line); border-radius: 10px; border-collapse: separate; border-spacing: 0; overflow: hidden; }
 .property-table th, .property-table td { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); text-align: left; font-size: 14.5px; line-height: 1.6; }
@@ -414,6 +433,8 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .quiz-hint span { display: grid; gap: 2px; }
 .quiz-hint em { color: var(--muted); font-style: normal; }
 .quiz-correct { color: var(--success); background: color-mix(in srgb, var(--success) 9%, var(--surface)); font-weight: 800; }
+.quiz-correct span { display: grid; gap: 2px; font-weight: 400; }
+.quiz-correct b { font-weight: 800; }
 .quiz-passed { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin: 18px 0 0; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--success) 38%, var(--line)); border-radius: 9px; color: var(--success); background: color-mix(in srgb, var(--success) 8%, var(--surface)); }
 .quiz-passed > svg { width: 22px; height: 22px; }
 .quiz-passed span { display: grid; gap: 2px; font-size: 12px; }

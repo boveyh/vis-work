@@ -12,6 +12,28 @@ export type DemoKind =
   | "project";
 export type ControlKey = "direction" | "justify" | "gap" | "columns" | "padding";
 
+export type TheoryBlock = {
+  heading: Copy;
+  body: Copy;
+  /* 这一块实际在讲的属性：必须与本章 keyPoints 的 term 一致；方法型概念可以省略 */
+  point?: string;
+  /* 为什么这样（原理 / 浏览器行为） */
+  why?: Copy;
+  /* 3–6 行最小示例 */
+  snippet?: string;
+  /* 什么时候会踩坑 */
+  pitfall?: Copy;
+  /* 延伸阅读 */
+  refs?: { label: string; href: string }[];
+};
+
+export type KeyPoint = {
+  term: string;
+  desc: Copy;
+  /* 常用取值与一个坑 */
+  detail?: Copy;
+};
+
 export type Lesson = {
   id: string;
   order: number;
@@ -21,10 +43,14 @@ export type Lesson = {
   goal: Copy;
   duration: Copy;
   objectives: Copy[];
-  theory: { heading: Copy; body: Copy }[];
-  keyPoints: { term: string; desc: Copy }[];
+  /* 真实场景：这一章解决的问题出现在哪些页面里 */
+  scenario?: Copy;
+  theory: TheoryBlock[];
+  keyPoints: KeyPoint[];
   mistakes: Copy[];
   practice: Copy[];
+  /* 章末自检清单 */
+  checklist?: Copy[];
   html: string;
   css: string;
   demo: DemoKind;
@@ -60,18 +86,22 @@ export const lessons: Lesson[] = [
     theory: [
       {
         heading: t("浏览器先读结构，再读样式", "The browser reads structure, then styles"),
+        point: "<header> / <main> / <footer>",
         body: t("HTML 负责说明“这块内容是什么”，CSS 负责决定“它长什么样、放在哪里”。浏览器先把 HTML 解析成一棵树，再根据 CSS 计算每个盒子的尺寸和位置。布局出问题时，先检查结构是否正确。", "HTML says what a piece of content is; CSS decides how it looks and where it sits. The browser parses HTML into a tree, then computes every box's size and position from CSS. When layout breaks, check the structure first."),
       },
       {
         heading: t("块级元素独占一行", "Block elements take a full row"),
+        point: "display: block",
         body: t("div、p、h1、section 这类块级元素默认从上到下依次排列，每个都占满可用宽度，它们撑起页面的纵向结构。", "Block elements such as div, p, h1 and section stack from top to bottom and fill the available width. They form the vertical structure of a page."),
       },
       {
         heading: t("行内元素跟随文字", "Inline elements flow with text"),
+        point: "display: inline",
         body: t("span、a、strong 这类行内元素不会换行，宽度由内容决定，只占据文字需要的空间。想给行内元素设置宽高，需要先把它变成 inline-block 或 block。", "Inline elements like span, a and strong never break the line. Their width comes from their content. To give them width or height, first make them inline-block or block."),
       },
       {
         heading: t("文档流是最省力的默认布局", "Normal flow is the cheapest default"),
+        point: "max-width",
         body: t("在没有 flex、grid、定位的情况下，页面依然能正确排版，这就是文档流。大多数内容页面只需要限制宽度、留出间距，不必动用复杂的布局工具。", "Without flex, grid or positioning a page still lays out correctly. That is normal flow. Most content pages only need a width limit and some spacing, not heavyweight layout tools."),
       },
     ],
@@ -114,18 +144,22 @@ export const lessons: Lesson[] = [
     theory: [
       {
         heading: t("盒子由内向外分四层", "A box has four layers, outside in"),
+        point: "padding",
         body: t("最里面是内容区 content，往外依次是内边距 padding、边框 border 和外边距 margin。padding 属于盒子自身，背景色会覆盖它；margin 在盒子之外，永远不属于自身尺寸。", "At the centre is the content area, then padding, border and finally margin. Padding belongs to the box and is covered by its background; margin sits outside the box and is never part of its own size."),
       },
       {
         heading: t("content-box 与 border-box", "content-box versus border-box"),
+        point: "box-sizing: border-box",
         body: t("默认的 content-box 会把 padding 和 border 加在声明宽度之外；设置 box-sizing: border-box 后，声明的 width 就包含 padding 与 border，尺寸更容易预测，也更少溢出。", "The default content-box adds padding and border on top of the declared width. With box-sizing: border-box the declared width already includes padding and border, so sizes are easier to predict and overflow is rarer."),
       },
       {
         heading: t("外边距会与相邻元素合并", "Margins collapse with neighbours"),
+        point: "margin",
         body: t("两个上下相邻的块级元素，它们的垂直 margin 会折叠成较大的那一个，而不是相加。这不是 bug，而是规则；用 padding 或 flex/grid 的 gap 才能得到确定间距。", "For two block elements stacked vertically, their vertical margins collapse into the larger value instead of adding up. That is the rule, not a bug; use padding or a flex/grid gap when you need exact spacing."),
       },
       {
         heading: t("宽度溢出通常来自三件事", "Overflow usually comes from three things"),
+        point: "max-width: 100%",
         body: t("固定宽度加内边距、子元素写死了更大的宽度、或者长串英文和图片不肯换行。先确认是哪一种，再决定用 border-box、min-width: 0 还是 max-width: 100%。", "A fixed width plus padding, a child with a larger hard-coded width, or long unbroken text and images that refuse to shrink. Identify which one applies before reaching for border-box, min-width: 0 or max-width: 100%."),
       },
     ],
@@ -158,6 +192,7 @@ export const lessons: Lesson[] = [
     stage: "foundation",
     title: t("Flexbox 弹性布局", "Flexbox Layout"),
     summary: t("用一维布局控制一组元素的方向、对齐、间距与伸缩。", "Control direction, alignment, spacing and growth for a row of items."),
+    scenario: t("导航栏、工具栏、卡片行、页脚链接——凡是“一行或一列”的元素集合，几乎都用 Flexbox 排列；另一个日常任务是让某个子元素吃掉剩余空间，而另一个保持固定宽度。", "Navigation bars, toolbars, card rows, footer links: almost everything that lives in one row or one column uses Flexbox. Its other everyday job is letting one child absorb the leftover space while another stays fixed."),
     goal: t("完成一个导航栏和一个等高卡片列表", "Build a navigation bar and a row of equal-height cards"),
     duration: t("约 20 分钟", "20 min"),
     objectives: [
@@ -168,29 +203,49 @@ export const lessons: Lesson[] = [
     theory: [
       {
         heading: t("Flex 解决的是一维排列", "Flex solves one-dimensional arrangement"),
+        point: "display: flex",
+        why: t("Flex 只处理一个方向：主轴。这既是它比 Grid 简单的原因，也是它不擅长二维对齐的原因——需要行列同时对齐时应该交给 Grid。", "Flex only concerns one direction: the main axis. That is why it is simpler than Grid, and also why it struggles with two-dimensional alignment: reach for Grid when rows and columns must line up together."),
+        snippet: `.nav {\n  display: flex;\n  gap: 24px;\n}`,
+        pitfall: t("把 display: flex 写在项目上而不是容器上。弹性布局作用于容器的直接子元素，写错层级等于没写。", "Putting display: flex on the item instead of the container. Flex applies to the container's direct children; the wrong level does nothing."),
+        refs: [{ label: "MDN · Flexbox 基本概念", href: "https://developer.mozilla.org/docs/Web/CSS/CSS_flexible_box_layout/Basic_concepts_of_flexbox" }, { label: "web.dev · Flexbox", href: "https://web.dev/learn/css/flexbox" }],
         body: t("给容器加上 display: flex，它的直接子元素就变成弹性项目，按一条轴线排列。它最擅长处理导航栏、工具栏、卡片行这类“一行或一列”的问题。", "Add display: flex to a container and its direct children become flex items arranged along a single axis. It shines for navigation bars, toolbars and card rows: problems that live in one row or one column."),
       },
       {
         heading: t("先找主轴，再选属性", "Find the main axis before picking properties"),
+        point: "flex-direction",
+        why: t("justify-content 只沿主轴工作，align-items 只沿交叉轴工作。flex-direction 一改，两者的作用方向跟着交换——这是初学 Flexbox 最容易混乱的地方。", "justify-content only works along the main axis and align-items only along the cross axis. Change flex-direction and their directions swap, which is the most confusing part of learning Flexbox."),
+        snippet: `.hero {\n  display: flex;\n  flex-direction: column;\n  justify-content: center; /* 主轴＝垂直 */\n  align-items: center;     /* 交叉轴＝水平 */\n}`,
+        pitfall: t("把 justify-content 当成“水平居中”。方向改成 column 之后，它控制的是垂直方向。", "Treating justify-content as horizontal centering. Once the direction is column it controls the vertical direction."),
+        refs: [{ label: "MDN · flex-direction", href: "https://developer.mozilla.org/docs/Web/CSS/flex-direction" }],
         body: t("flex-direction 决定主轴方向，justify-content 沿主轴分配空间，align-items 沿交叉轴对齐。主轴不一定是水平的：改成 column 之后，justify-content 就控制垂直方向了。", "flex-direction defines the main axis. justify-content distributes space along it, while align-items aligns on the cross axis. The main axis is not always horizontal: switch to column and justify-content now controls the vertical direction."),
       },
       {
         heading: t("间距优先用 gap", "Prefer gap for spacing"),
+        point: "gap",
+        why: t("gap 只在项目之间产生间距：既不在容器首尾留下空白，也不会像 margin 那样折叠。间距由父容器统一管理，子元素不需要知道彼此的存在。", "gap only creates space between items: no leading or trailing gaps, and no margin collapsing. The parent owns the spacing and children do not need to know about each other."),
+        snippet: `.list {\n  display: flex;\n  gap: 16px;\n}\n/* 不要用 .list > * + * { margin-left: 16px } */`,
+        pitfall: t("用 margin-right 给每个项目加间距，最后一个项目也会带上一段多余空白，行尾对齐就歪了。", "Adding margin-right to every item leaves extra space on the last one, which throws off the right edge."),
+        refs: [{ label: "MDN · gap", href: "https://developer.mozilla.org/docs/Web/CSS/gap" }],
         body: t("gap 只在项目之间产生间距，不会在容器首尾留下多余空白，因此比给每个子元素写 margin 更可预测，也避免了 margin 折叠。", "gap only creates space between items, never at the container's edges, so it is more predictable than margins on every child and immune to margin collapsing."),
       },
       {
         heading: t("伸缩与换行", "Growing and wrapping"),
+        point: "flex: 1",
+        why: t("flex 是 flex-grow / flex-shrink / flex-basis 的简写。flex: 1 等于 flex: 1 1 0%，项目从 0 开始平分剩余空间，而不是从自身内容宽度开始。", "flex is shorthand for flex-grow, flex-shrink and flex-basis. flex: 1 means flex: 1 1 0%, so items share the space starting from zero rather than from their content width."),
+        snippet: `.split {\n  display: flex;\n  gap: 24px;\n}\n.split aside { flex: 0 0 240px; }\n.split main  { flex: 1; min-width: 0; }`,
+        pitfall: t("给可压缩的子元素忘记 min-width: 0，内部的长文本或表格会把布局撑破。", "Forgetting min-width: 0 on a shrinkable child: long text or a table inside will blow up the layout."),
+        refs: [{ label: "MDN · flex", href: "https://developer.mozilla.org/docs/Web/CSS/flex" }, { label: "web.dev · Flexbox", href: "https://web.dev/learn/css/flexbox" }],
         body: t("flex: 1 让项目平分剩余空间，flex-wrap: wrap 允许一行放不下时换行。注意被压缩的子元素需要 min-width: 0 才能让内部文字正确截断。", "flex: 1 lets items share the leftover space, and flex-wrap: wrap lets a row break when it overflows. Remember that a squeezed child needs min-width: 0 before its inner text can truncate correctly."),
       },
     ],
     keyPoints: [
-      { term: "display: flex", desc: t("把容器变成弹性容器，子元素成为项目。", "Turn the container into a flex container; children become items.") },
-      { term: "flex-direction", desc: t("设定主轴方向：row、column 及其反向。", "Set the main axis: row, column and their reverses.") },
-      { term: "justify-content", desc: t("沿主轴分配空间，如 center、space-between。", "Distribute space along the main axis, e.g. center or space-between.") },
-      { term: "align-items", desc: t("沿交叉轴对齐，如 center、stretch。", "Align on the cross axis, e.g. center or stretch.") },
-      { term: "gap", desc: t("项目之间的固定间距，不产生边缘空白。", "A fixed gap between items with no edge space.") },
-      { term: "flex: 1", desc: t("让项目平分剩余空间并保持等高。", "Let items share leftover space and stretch to equal height.") },
-      { term: "flex-wrap: wrap", desc: t("空间不足时允许换行。", "Allow wrapping when space runs out.") },
+      { term: "display: flex", desc: t("把容器变成弹性容器，子元素成为项目。", "Turn the container into a flex container; children become items."), detail: t("取值：flex（默认）与 inline-flex；inline-flex 让容器本身参与行内排版。", "Values: flex (default) and inline-flex; inline-flex keeps the container itself inline.") },
+      { term: "flex-direction", desc: t("设定主轴方向：row、column 及其反向。", "Set the main axis: row, column and their reverses."), detail: t("常用：row（默认）、column；row-reverse / column-reverse 会同时反转项目顺序。", "Common: row (default), column; the reverse values also flip the item order.") },
+      { term: "justify-content", desc: t("沿主轴分配空间，如 center、space-between。", "Distribute space along the main axis, e.g. center or space-between."), detail: t("常用：flex-start、center、space-between、space-around、space-evenly。", "Common: flex-start, center, space-between, space-around, space-evenly.") },
+      { term: "align-items", desc: t("沿交叉轴对齐，如 center、stretch。", "Align on the cross axis, e.g. center or stretch."), detail: t("常用：stretch（默认）、center、flex-start、baseline。", "Common: stretch (default), center, flex-start, baseline.") },
+      { term: "gap", desc: t("项目之间的固定间距，不产生边缘空白。", "A fixed gap between items with no edge space."), detail: t("可以写两个值：gap: 行距 列距，例如 gap: 16px 24px。", "Accepts two values — gap: row column, e.g. gap: 16px 24px.") },
+      { term: "flex: 1", desc: t("让项目平分剩余空间并保持等高。", "Let items share leftover space and stretch to equal height."), detail: t("等于 flex: 1 1 0%；写成 flex: 1 1 auto 会从内容宽度开始分配，效果不同。", "Equal to flex: 1 1 0%; flex: 1 1 auto distributes from the content width instead, which behaves differently.") },
+      { term: "flex-wrap: wrap", desc: t("空间不足时允许换行。", "Allow wrapping when space runs out."), detail: t("配合 min-width: 0 与 gap 使用；nowrap 是默认值，只会强制压缩项目。", "Pairs with min-width: 0 and gap; nowrap is the default and simply squeezes items.") },
     ],
     mistakes: [
       t("把 justify-content 当成“水平居中”，换了方向就失效。", "Treating justify-content as horizontal centering; it breaks once the direction changes."),
@@ -205,6 +260,12 @@ export const lessons: Lesson[] = [
     css: `.nav {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n}`,
     demo: "navbar",
     controls: ["direction", "justify", "gap"],
+    checklist: [
+      t("把窗口从 1440 拖到 320：导航项不溢出、不重叠。", "Drag the window from 1440 down to 320: nav items neither overflow nor overlap."),
+      t("换成很长的英文单词后，卡片仍不撑破容器。", "Swap in a long English word: cards still do not blow out the container."),
+      t("每处间距都来自 gap，而不是 margin 拼出来的。", "Every gap comes from gap, not from stacked margins."),
+      t("改变主轴方向后，对齐仍然符合设计意图。", "After changing the main axis, alignment still matches the intent."),
+    ],
     challenge: t("让导航项水平居中，并保持 24px 的固定间距。", "Center the navigation items horizontally while keeping a fixed 24px gap."),
   },
   {
@@ -223,18 +284,22 @@ export const lessons: Lesson[] = [
     theory: [
       {
         heading: t("定位改变元素的参照物", "Positioning changes the reference"),
+        point: "position: relative",
         body: t("static 是默认值，元素跟随文档流。relative 仍占原位，但可以用 inset 偏移，并成为子元素的定位参照。absolute 脱离文档流，以最近的已定位祖先为参照。fixed 以视口为参照，sticky 则在滚动到阈值后粘住。", "static is the default and stays in flow. relative keeps its slot but can be offset with inset and becomes a reference for children. absolute leaves the flow and references the nearest positioned ancestor. fixed references the viewport, while sticky sticks once it reaches a threshold."),
       },
       {
         heading: t("父相子绝是最常用的组合", "Positioned parent, absolute child"),
+        point: "position: absolute",
         body: t("给父元素设置 position: relative，子元素用 position: absolute 加 inset，就能把角标、关闭按钮和遮罩精确地钉在父容器里，而不会跑到页面其他位置。", "Give the parent position: relative, then place the child with position: absolute and inset. Badges, close buttons and scrims then pin to the parent instead of flying off somewhere else on the page."),
       },
       {
         heading: t("吸顶比固定更安全", "Sticky is safer than fixed"),
+        point: "position: sticky",
         body: t("position: sticky 配合 top: 0 能让元素在滚动到顶部时粘住，但它仍属于原有容器。相比 fixed 不会塌陷布局高度，也不会在父容器结束后还留在屏幕上。", "position: sticky with top: 0 sticks an element once it reaches the top, yet it still belongs to its container. Unlike fixed it does not collapse layout height or hang around after its parent ends."),
       },
       {
         heading: t("z-index 只在同一层叠上下文内比较", "z-index only compares inside one stacking context"),
+        point: "z-index",
         body: t("只要祖先设置了 transform、filter、opacity 或新的 z-index，就会创建一个新的层叠上下文。此时子元素再大的 z-index 也无法越过另一个上下文里的元素。先理清上下文边界，再调数值。", "Whenever an ancestor sets transform, filter, opacity or a new z-index it creates a fresh stacking context. Inside it, no z-index can rise above elements in a different context. Map the context boundaries before tuning numbers."),
       },
     ],
@@ -277,18 +342,22 @@ export const lessons: Lesson[] = [
     theory: [
       {
         heading: t("Grid 同时管理行和列", "Grid manages rows and columns together"),
+        point: "display: grid",
         body: t("Flexbox 沿一条轴线排列，Grid 则先把容器切成行列网格，再把子元素放进去。页面级骨架、仪表盘、画廊这类二维关系，用 Grid 描述最直接。", "Flexbox arranges along one axis; Grid first cuts the container into rows and columns, then places children into it. For page shells, dashboards and galleries, Grid describes the two-dimensional relationship most directly."),
       },
       {
         heading: t("轨道可以是固定的，也可以是弹性的", "Tracks can be fixed or flexible"),
+        point: "grid-template-columns",
         body: t("1fr 表示一份可用空间，repeat(3, 1fr) 是等分三列，minmax(160px, 1fr) 则保证轨道至少 160px 且能继续伸展。把自动填充交给浏览器，就不必为每个断点重写列数。", "1fr means one share of the free space; repeat(3, 1fr) makes three equal columns; minmax(160px, 1fr) keeps a track at least 160px wide while still allowing it to grow. Let the browser handle the filling and you no longer rewrite column counts per breakpoint."),
       },
       {
         heading: t("auto-fit 与 auto-fill 的区别", "auto-fit versus auto-fill"),
+        point: "auto-fit",
         body: t("两者都会自动铺列。auto-fill 会保留空轨道，auto-fit 则把空轨道收起来，让现有项目撑满整行。做卡片流时通常选 auto-fit。", "Both lay out columns automatically. auto-fill keeps empty tracks around, while auto-fit collapses them so the existing items fill the row. For card flows auto-fit is usually the choice."),
       },
       {
         heading: t("命名区域让结构一眼可读", "Named areas make structure readable"),
+        point: "grid-template-areas",
         body: t("用 grid-template-areas 画一张字符地图，再让子元素通过 grid-area 认领位置，整个页面的区域关系会像示意图一样直接写在 CSS 里。", "Draw a character map with grid-template-areas, then let each child claim a spot through grid-area. The whole page's region map then reads like a diagram right inside the CSS."),
       },
     ],
@@ -332,18 +401,22 @@ export const lessons: Lesson[] = [
     theory: [
       {
         heading: t("先移动端，再向上增强", "Start mobile, then enhance upward"),
+        point: "@media (min-width: ...)",
         body: t("默认样式写给最小的屏幕，只写必要的字号。间距和分栏；再用 @media (min-width: 768px) 逐步往里加内容。这样最先保证的是“能用”，而不是“桌面好看、手机崩掉”。", "Write the default styles for the smallest screen with only essential size, spacing and columns. Then add content back with @media (min-width: 768px). This guarantees usability first, instead of a desktop that looks great and a phone that breaks."),
       },
       {
         heading: t("流式尺寸减少断点数量", "Fluid sizing reduces breakpoints"),
+        point: "clamp(min, ideal, max)",
         body: t("clamp(1rem, 0.5rem + 2vw, 2rem) 让字号在有上下限的区间里跟随视口平滑变化，min() 与百分比配合能取代大量固定宽度，从而少写很多媒体查询。", "clamp(1rem, 0.5rem + 2vw, 2rem) lets a font size scale smoothly with the viewport between a floor and a ceiling. min() plus percentages replace a lot of fixed widths, which means far fewer media queries."),
       },
       {
         heading: t("断点应由内容决定", "Let content decide the breakpoints"),
+        point: "@media (min-width: ...)",
         body: t("打开开发者工具，慢慢拖动宽度，记录文字开始换行别扭、卡片开始拥挤的位置，把断点设在那里。按具体设备型号设断点，往往在真实内容下失效。", "Open dev tools, drag the width slowly, and note where text starts wrapping awkwardly or cards start crowding. Put the breakpoints there. Breakpoints tied to specific device models tend to fail with real content."),
       },
       {
         heading: t("组件用容器查询", "Use container queries for components"),
+        point: "@container (min-width: ...)",
         body: t("媒体查询看的是视口宽度，容器查询看的是组件自身所在容器的宽度。同一个卡片放进侧栏和主区域时，容器查询能让它分别呈现紧凑或舒展的样式。", "Media queries look at viewport width; container queries look at the width of the component's own container. The same card placed in a sidebar or a main region can render compact or roomy accordingly."),
       },
     ],
@@ -390,14 +463,17 @@ export const lessons: Lesson[] = [
       },
       {
         heading: t("Hero 是一个纵向堆叠的容器", "A hero is a vertical stack"),
+        point: "flex-direction: column",
         body: t("首页首屏通常包含标题、副标题和行动按钮。它们纵向排列，用一层 flex-direction: column 加 gap 即可，不需要把每个元素都绝对定位。", "A landing hero usually holds a title, a subtitle and a call to action. They stack vertically, so one flex-direction: column with a gap is enough. There is no need to absolutely position every element."),
       },
       {
         heading: t("卡片流交给 auto-fit", "Let auto-fit handle the card flow"),
+        point: "repeat(auto-fit, ...)",
         body: t("repeat(auto-fit, minmax(220px, 1fr)) 让卡片在宽屏多列、窄屏单列，且无需任何媒体查询。这是响应式列表里最划算的一行代码。", "repeat(auto-fit, minmax(220px, 1fr)) gives cards many columns on wide screens and one on narrow screens with no media query at all. It is the best-value line of CSS in a responsive list."),
       },
       {
         heading: t("圣杯布局就是一张命名地图", "The holy grail is a named map"),
+        point: "grid-template-areas",
         body: t("页眉、侧栏、内容、页脚这四块，用 grid-template-areas 一行一行画出来，再把子元素用 grid-area 放进去，既直观又便于在断点处重排。", "Header, sidebar, content and footer: draw them line by line with grid-template-areas, then place each child with grid-area. It is both readable and easy to rearrange at breakpoints."),
       },
     ],
@@ -444,14 +520,17 @@ export const lessons: Lesson[] = [
       },
       {
         heading: t("每个区域各自选工具", "Pick a tool per region"),
+        point: "grid-template-rows: auto 1fr auto",
         body: t("页面外壳用 Grid 划分行，主内容与侧栏用 Grid 分列，导航栏内部用 Flexbox 对齐，其余文字走文档流。不要整页只用一种工具。", "Use Grid to divide the page shell into rows, Grid again to split content from the sidebar, Flexbox to align inside the navigation bar, and normal flow for the text. Do not use a single tool for the whole page."),
       },
       {
         heading: t("断点越少越好", "Fewer breakpoints is better"),
+        point: "auto-fit + minmax",
         body: t("优先用 auto-fit、clamp 和百分比让布局自己适应，只在内容确实需要重新排列时才加媒体查询。每加一个断点，都要能说清它解决了什么。", "Prefer auto-fit, clamp and percentages so the layout adapts on its own, and add a media query only when content truly needs rearranging. For every breakpoint you add, you should be able to say what it fixes."),
       },
       {
         heading: t("按清单验收", "Verify against a checklist"),
+        point: "max-width: 100%",
         body: t("完成后依次检查：最小宽度下无横向滚动、长文本能换行、焦点可见、图片不超过容器、刷新后结构仍正确。布局的可靠性来自这些细项，而不是视觉效果。", "When finished, check in order: no horizontal scroll at the smallest width, long text wraps, focus is visible, images never exceed their container, and the structure still holds after a refresh. Layout reliability comes from these details, not from visual flair."),
       },
     ],

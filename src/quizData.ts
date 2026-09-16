@@ -7,6 +7,8 @@ export type QuizQuestion = {
   answer: number;
   hint: Copy;
   concept: Copy;
+  /* 为什么正确项是对的：答对后与题库中显示 */
+  rationale?: Copy;
 };
 
 export type Quiz = {
@@ -27,7 +29,7 @@ const q = (id: string, zh: string, en: string, options: [Copy, Copy, Copy], answ
 
 const quiz = (lessonId: string, questions: QuizQuestion[]): Quiz => ({ id: `chapter-${lessonId}`, kind: "chapter", lessonIds: [lessonId], questions });
 
-export const chapterQuizzes: Record<string, Quiz> = {
+const chapterQuizData: Record<string, Quiz> = {
   "page-structure": quiz("page-structure", [
     q("structure-1", "哪个标签最适合承载页面的主要内容？", "Which element best contains the page's main content?", [t("<span>", "<span>"), t("<br>", "<br>"), t("<main>", "<main>")], 2, "先判断内容在整页中的语义角色。", "Start with the content's semantic role in the page.", "语义结构", "Semantic structure"),
     q("structure-2", "块级元素默认如何排列？", "How do block elements flow by default?", [t("始终在同一行", "Always stay on one line"), t("从上到下排列", "Stack from top to bottom"), t("全部重叠", "All overlap")], 1, "回想正常文档流中的纵向顺序。", "Recall the vertical order in normal flow.", "文档流", "Normal flow"),
@@ -138,9 +140,92 @@ const stageQuestionSets: Record<StageKey, QuizQuestion[]> = {
   ],
 };
 
-export const stageQuizzes: Record<StageKey, Quiz> = {
+const stageQuizData: Record<StageKey, Quiz> = {
   starter: { id: "stage-starter", kind: "stage", lessonIds: stageLessons.starter, questions: stageQuestionSets.starter },
   foundation: { id: "stage-foundation", kind: "stage", lessonIds: stageLessons.foundation, questions: stageQuestionSets.foundation },
   advanced: { id: "stage-advanced", kind: "stage", lessonIds: stageLessons.advanced, questions: stageQuestionSets.advanced },
   practice: { id: "stage-practice", kind: "stage", lessonIds: stageLessons.practice, questions: stageQuestionSets.practice },
 };
+
+/* 每题一句「为什么正确项是对的」：测验答对后与题库中显示 */
+const rationales: Record<string, Copy> = {
+  "structure-1": t("<main> 表示页面唯一的主内容区域；<header> 与 <footer> 只能描述页眉页脚，无法替代它。", "<main> marks the page's single main content region; <header> and <footer> only describe the banner and footer, so they cannot stand in for it."),
+  "structure-2": t("块级盒子在正常流里逐个换行，所以默认纵向堆叠；横向并排需要额外的布局工具。", "Block boxes break to a new line in normal flow, so they stack vertically; side-by-side placement needs a layout tool."),
+  "structure-3": t("max-width 限制行宽避免长行难读，margin-inline: auto 把两侧剩余空间均分，于是水平居中。", "max-width caps the line length and margin-inline: auto splits the leftover space on both sides, which centres the block."),
+  "structure-4": t("语义元素本身就把区域角色告诉了辅助技术；全用 div 只能靠额外 ARIA 或视觉猜测补救。", "Semantic elements name the region for assistive technology by themselves; div-only markup relies on extra ARIA or guesswork."),
+  "box-1": t("盒模型从内到外就是内容区、内边距、边框、外边距：padding 属于盒子自身，margin 在盒子之外。", "The box model runs content, padding, border, margin from the inside out: padding belongs to the box, margin sits outside it."),
+  "box-2": t("content-box 下 width 只描述内容区，padding 会被加在声明宽度之外，所以总占用变宽。", "Under content-box width describes only the content area, so padding is added on top of the declared width and the box grows."),
+  "box-3": t("border-box 让声明的 width 包含 padding 与 border，尺寸计算因此可预测、也少溢出。", "border-box makes the declared width include padding and border, which keeps sizing predictable and overflow rare."),
+  "box-4": t("gap 由父布局统一管理、只在项目之间生效，不会像 margin 那样在首尾留下空白或被折叠。", "gap is owned by the parent and only sits between items; unlike margin it leaves no edge space and never collapses."),
+  "flex-1": t("column 把主轴由水平改为垂直，项目因此沿纵向排列。", "column turns the main axis from horizontal to vertical, so items line up down the page."),
+  "flex-2": t("justify-content 沿主轴分配剩余空间；负责交叉轴的是 align-items。", "justify-content distributes leftover space along the main axis, while align-items covers the cross axis."),
+  "flex-3": t("gap 只在项目之间产生固定间距，首尾不会多出空白，比逐个写 margin 更可控。", "gap creates a fixed distance only between items, with no extra space at the ends, which is more controllable than per-child margins."),
+  "flex-4": t("justify-content 永远跟随主轴；主轴改成垂直后，它控制的就是垂直方向。", "justify-content always follows the main axis: once the axis is vertical it controls the vertical direction."),
+  "position-1": t("absolute 以最近的 position 非 static 祖先为参照，找不到时才退回初始包含块。", "An absolute element references the nearest ancestor whose position is not static, falling back to the initial containing block."),
+  "position-2": t("父元素建立定位上下文后，absolute 子元素才会以它为参照被钉在卡片内部。", "Once the parent establishes a positioning context, the absolute child pins to it rather than to the page."),
+  "position-3": t("z-index 决定同一层叠上下文内的绘制顺序，数值越大越靠上。", "z-index decides paint order inside one stacking context: the larger value sits on top."),
+  "position-4": t("absolute 会脱离文档流、失去流内高度，内容一变就容易重叠，只在确实需要覆盖时才用。", "absolute leaves the flow and loses in-flow height, so content changes cause overlap; use it only when something truly must be overlaid."),
+  "grid-1": t("列轨道由 grid-template-columns 定义，行轨道交给 grid-template-rows。", "Column tracks come from grid-template-columns; row tracks are grid-template-rows."),
+  "grid-2": t("repeat(3, 1fr) 生成 3 条轨道，1fr 表示每条都分到一份等量的可用空间。", "repeat(3, 1fr) creates three tracks, and 1fr gives each an equal share of the free space."),
+  "grid-3": t("网格按行自动放置，6 ÷ 3 = 2，所以形成两行。", "The grid auto-places row by row: 6 ÷ 3 = 2, so two rows."),
+  "grid-4": t("gap 同时控制轨道之间与行之间；写两个值时是 gap: 行距 列距。", "gap controls track and row gutters together; with two values it reads gap: row column."),
+  "responsive-1": t("断点应设在内容真正开始拥挤的位置，设备型号清单会随新品上市而过时。", "Breakpoints belong where content actually starts to crowd; a device list goes stale with every launch."),
+  "responsive-2": t("空间不足时先重排内容关系（改单列），缩小字号只会牺牲可读性。", "When space runs out, reflow the relationship into one column first; shrinking type only trades away readability."),
+  "responsive-3": t("媒体查询匹配的是视口条件；要按组件所在容器宽度响应，应改用容器查询。", "Media queries match viewport conditions; to respond to a component's own container you use a container query."),
+  "responsive-4": t("让代码块在自身范围内滚动，页面宽度与其余内容都不受影响。", "Letting the block scroll internally keeps the page width and everything else intact."),
+  "patterns-1": t("先看内容沿一条线还是一张网格——关系决定工具，而不是习惯。", "Check whether the content runs along a line or across a grid: the relationship picks the tool, not habit."),
+  "patterns-2": t("一维排列是 Flexbox 的主场，导航项正需要一行分布。", "One-dimensional arrangement is Flexbox's home turf, which is exactly what a nav row needs."),
+  "patterns-3": t("卡片区域要求行列同时对齐，正是 Grid 的二维能力。", "A card area needs rows and columns aligned together, which is Grid's two-dimensional strength."),
+  "patterns-4": t("每个区域的关系不同，按区域分别选工具是正常且推荐的组合方式。", "Different regions have different relationships, so choosing per region is normal and recommended."),
+  "final-1": t("分区图清楚之后，代码结构几乎是照抄下来的，后面每一步都更省力。", "Once the region map is clear the code structure is almost a transcription, which makes every later step cheaper."),
+  "final-2": t("grid-template-areas 用字符地图描述整体结构，既直观又便于在断点处重排。", "grid-template-areas describes the whole structure as a character map: readable, and easy to rearrange at breakpoints."),
+  "final-3": t("让主内容先出现符合阅读与操作顺序，而不是把侧栏挤成窄条。", "Letting the main content come first matches reading order instead of squeezing the aside into a sliver."),
+  "final-4": t("验收要同时覆盖目标条件，以及多种宽度下的溢出、错位与焦点可见性。", "Acceptance covers the target conditions plus overflow, misalignment and visible focus at several widths."),
+  "stage-starter-1": t("整页只有一个主内容区域，<main> 正是表达它的元素。", "A page has one main content region, and <main> is the element that says so."),
+  "stage-starter-2": t("块级盒子的默认推进方向是纵向，所以相邻块级元素上下堆叠。", "Block boxes advance vertically by default, so neighbouring blocks stack."),
+  "stage-starter-3": t("限制每行字符数等于给容器设宽度上限，而不是改字号。", "Capping characters per line means capping the container width, not the type size."),
+  "stage-starter-4": t("content-box 下 width 只算内容区：280 + 2×2 = 284px。", "Under content-box width covers only the content: 280 + 2×2 = 284px."),
+  "stage-starter-5": t("border-box 把 padding 与 border 计入声明宽度，加内边距不会改变总宽。", "border-box counts padding and border inside the declared width, so extra padding does not widen the box."),
+  "stage-starter-6": t("由父布局统一管理间距，既不依赖每个子元素，也不会被折叠。", "The parent owns the spacing, so it depends on no child and never collapses."),
+  "stage-starter-7": t("<nav> 直接声明这一区域的作用，辅助技术无需猜测。", "<nav> states what the region is, with no guessing for assistive tech."),
+  "stage-starter-8": t("margin: auto 分配的是剩余空间，没有剩余空间就无法居中。", "margin: auto shares leftover space, so without leftover space nothing centres."),
+  "stage-starter-9": t("先分清是尺寸计算问题还是可用空间不足，再改一处验证。", "Separate a sizing-model problem from a lack-of-space problem, then change one thing and verify."),
+  "stage-starter-10": t("结构、测量宽度与间距是三件独立的事，组合起来才既清楚又好读。", "Structure, measure and spacing are three separate concerns; together they give clarity and readability."),
+  "stage-foundation-1": t("column 负责改方向、reverse 负责反转顺序，两者叠加生效。", "column changes the direction and reverse flips the order; the two stack."),
+  "stage-foundation-2": t("交叉轴对齐交给 align-items，主轴分配才用 justify-content。", "Cross-axis alignment belongs to align-items; justify-content handles the main axis."),
+  "stage-foundation-3": t("space-between 把剩余空间全部推到中间，两端自然贴边。", "space-between pushes every bit of free space into the middle, leaving the ends flush."),
+  "stage-foundation-4": t("需要伸展的一侧用 flex: 1，另一侧保持固定宽度即可。", "Give the growing side flex: 1 and keep the other at a fixed width."),
+  "stage-foundation-5": t("wrap 允许放不下时换行，溢出因此不再发生。", "wrap lets the row break when it runs out of space, which removes the overflow."),
+  "stage-foundation-6": t("absolute 需要最近的非 static 祖先作为参照，父容器通常用 relative 提供。", "absolute needs the nearest non-static ancestor as its reference, which relative usually provides."),
+  "stage-foundation-7": t("覆盖顺序是层叠问题，由定位与 z-index 共同决定。", "Overlap order is a stacking question, decided by positioning together with z-index."),
+  "stage-foundation-8": t("工具栏是一维排列，Flex 最直接，并自带对齐与间距控制。", "A toolbar is one-dimensional, so Flex is the direct choice and brings alignment and gaps with it."),
+  "stage-foundation-9": t("布局上下文以容器为单位，同一页面里不同区域用不同工具完全正常。", "Layout context is per container, so mixing tools across regions is entirely normal."),
+  "stage-foundation-10": t("justify-content 永远沿主轴工作；column 下主轴就是垂直方向。", "justify-content always works along the main axis, which under column is vertical."),
+  "stage-advanced-1": t("列轨道由 grid-template-columns 定义，repeat(3, 1fr) 给出三条等宽轨道。", "Column tracks come from grid-template-columns, and repeat(3, 1fr) yields three equal ones."),
+  "stage-advanced-2": t("自动放置按行推进，9 个项目分 3 列正好 3 行。", "Auto-placement fills row by row: nine items over three columns make three rows."),
+  "stage-advanced-3": t("minmax 给出每条轨道的最小宽度，auto-fit 让轨道数量跟着可用宽度变化。", "minmax sets each track's minimum and auto-fit lets the track count follow the available width."),
+  "stage-advanced-4": t("gap 一个属性同时控制轨道与行之间的间距。", "One gap covers both track and row gutters."),
+  "stage-advanced-5": t("断点服务于内容；设备清单无法覆盖真实内容的行为。", "Breakpoints serve content; a device list cannot cover how real content behaves."),
+  "stage-advanced-6": t("先改变内容关系（单列重排），而不是压缩字号或强制横向滚动。", "Change the relationship first — reflow to one column — instead of shrinking type or forcing sideways scrolling."),
+  "stage-advanced-7": t("媒体查询只切换样式规则，不改变结构、也不加载别的资源。", "A media query only switches rules: it changes no markup and fetches nothing."),
+  "stage-advanced-8": t("局部滚动把溢出限制在代码块内，整页宽度保持稳定。", "Local scrolling keeps the overflow inside the block, so page width stays stable."),
+  "stage-advanced-9": t("每个区域按自己的关系响应：导航仍是一维，卡片区减少轨道即可。", "Each region responds on its own terms: the nav stays one-dimensional while the card area drops tracks."),
+  "stage-advanced-10": t("auto-fit 的轨道数量跟着可用宽度走，固定列网格的列数是写死的。", "auto-fit's track count follows the available width, while a fixed grid hard-codes the count."),
+  "stage-practice-1": t("布局从区域关系开始，颜色与动画都是后话。", "Layout starts with regions and their relationships; colour and animation come later."),
+  "stage-practice-2": t("一维导航排列是 Flex 的标准用法。", "A one-dimensional nav row is textbook Flex."),
+  "stage-practice-3": t("二维卡片墙需要行列同时控制，Grid 最合适。", "A two-dimensional card wall needs rows and columns controlled together, which is Grid."),
+  "stage-practice-4": t("区域关系不同，工具组合使用才是正常做法。", "Regions differ, so combining tools is the normal approach."),
+  "stage-practice-5": t("桌面通过不代表完成，还要在窄屏验证重排与溢出。", "Passing on desktop is not done: narrow widths must be checked for reflow and overflow."),
+  "stage-practice-6": t("导航的可达性优先于“必须挤在一行”。", "Reachability beats forcing everything onto one row."),
+  "stage-practice-7": t("页面边缘的留白属于容器，由它统一控制才有节奏。", "Edge spacing belongs to the container, and that is what gives the page rhythm."),
+  "stage-practice-8": t("一致的尺度与对齐线比更多颜色和阴影更能带来秩序感。", "A consistent scale and shared alignment lines give order more than extra colour or shadow."),
+  "stage-practice-9": t("布局上下文以容器为单位，混用 Flex 与 Grid 不会互相干扰。", "Layout context is per container, so mixing Flex and Grid does not interfere."),
+  "stage-practice-10": t("验收意味着目标达成且各宽度下无溢出与错位，而不是“看起来差不多”。", "Acceptance means targets met and no overflow or misalignment at any width, not “close enough”."),
+};
+
+/* 逐题解析与测验数据分开维护：一处集中审阅，且新增题目时容易发现遗漏 */
+const withRationale = (question: QuizQuestion): QuizQuestion => (rationales[question.id] ? { ...question, rationale: rationales[question.id] } : question);
+const decorate = (quiz: Quiz): Quiz => ({ ...quiz, questions: quiz.questions.map(withRationale) });
+
+export const chapterQuizzes: Record<string, Quiz> = Object.fromEntries(Object.entries(chapterQuizData).map(([id, quiz]) => [id, decorate(quiz)]));
+export const stageQuizzes = Object.fromEntries(Object.entries(stageQuizData).map(([key, quiz]) => [key, decorate(quiz)])) as Record<StageKey, Quiz>;

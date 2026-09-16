@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Copy, Lightbulb, List, LockKey, Moon, Play, Sun, X } from "@phosphor-icons/react";
-import { lessons, stageOf, stages, t, ui, type Copy as LocalizedCopy, type DemoKind, type Lesson, type Locale } from "./data";
+import { lessons, stageOf, stages, t, ui, type Copy as LocalizedCopy, type DemoKind, type KeyPoint, type Lesson, type Locale } from "./data";
 import { chapterQuizzes, stageQuizzes, type Quiz, type QuizQuestion } from "./quizData";
 
 const read = (value: { zh: string; en: string }, locale: Locale) => value[locale];
@@ -429,7 +429,7 @@ function BankQuestion({ question, index, locale, revealed, mode, picked, onToggl
         {solving ? <button className="bank-option" onClick={() => onChoose(optionIndex)} aria-pressed={isPicked}>{body}</button> : body}
       </li>;
     })}</ol>
-    {showAnswer && <div className="bank-explain"><p><b>{zh ? "知识点" : "Concept"}</b>{read(question.concept, locale)}</p><p><b>{zh ? "引导" : "Guide"}</b>{read(question.hint, locale)}</p></div>}
+    {showAnswer && <div className="bank-explain"><p><b>{zh ? "知识点" : "Concept"}</b>{read(question.concept, locale)}</p><p><b>{zh ? "引导" : "Guide"}</b>{read(question.hint, locale)}</p>{question.rationale && <p><b>{zh ? "为什么对" : "Why"}</b>{read(question.rationale, locale)}</p>}</div>}
     {guide && !showAnswer && <p className="bank-guide"><Lightbulb weight="fill" /><span>{read(question.hint, locale)}</span></p>}
     <div className="bank-question-actions">
       {solving
@@ -577,19 +577,11 @@ function activityFor(lesson: Lesson): LearningActivity {
   return { prediction: t("页面外壳最先应该拆成什么？", "What should the page shell be split into first?"), predictionOptions: [t("内容区域", "Content regions"), t("动画帧", "Animation frames"), t("颜色主题", "Color themes")], predictionAnswer: 0, check: t("完整页面通常应如何选择布局工具？", "How should a complete page choose layout tools?"), checkOptions: [t("整页只用一种", "Use one for everything"), t("按区域关系分别选择", "Choose per region relationship"), t("全部绝对定位", "Absolutely position everything")], checkAnswer: 1 };
 }
 
-function keyPointFor(lesson: Lesson, index: number) {
-  const indexes: Record<string, number[]> = {
-    "page-structure": [0, 2, 3, 4],
-    "box-model": [2, 0, 4, 5],
-    flexbox: [0, 1, 4, 5],
-    positioning: [0, 1, 3, 5],
-    grid: [0, 1, 5, 6],
-    responsive: [3, 0, 1, 4],
-    patterns: [0, 1, 2, 4],
-    "final-challenge": [0, 1, 2, 3],
-  };
-  return lesson.keyPoints[indexes[lesson.id]?.[index] ?? index % lesson.keyPoints.length];
+function keyPointFor(lesson: Lesson, block: Lesson["theory"][number]): KeyPoint | undefined {
+  return block.point ? lesson.keyPoints.find((item) => item.term === block.point) : undefined;
 }
+
+const conceptNumbersFor = (lesson: Lesson, term: string) => lesson.theory.map((block, index) => (block.point === term ? index + 1 : 0)).filter(Boolean);
 
 /* Draft version 2: chapter options were reordered, so older drafts no longer describe the same choices. */
 const QUIZ_DRAFT_VERSION = 2;
@@ -662,7 +654,7 @@ function QuizQuestionView({ question, index, locale, answer, submitted, onAnswer
     </div>
     {guiding && <p className="quiz-guide"><Lightbulb weight="fill" /><span><b>{locale === "zh" ? "引导" : "Guide"}</b>{read(question.hint, locale)}</span></p>}
     {wrong && <p className="quiz-hint"><Lightbulb weight="fill" /><span><b>{locale === "zh" ? "提示" : "Hint"}</b>{read(question.hint, locale)} <em>{locale === "zh" ? `回顾：${read(question.concept, locale)}` : `Review: ${read(question.concept, locale)}`}</em></span></p>}
-    {correct && <p className="quiz-correct"><Check weight="bold" />{locale === "zh" ? "回答正确" : "Correct"}</p>}
+    {correct && <p className="quiz-correct"><Check weight="bold" /><span><b>{locale === "zh" ? "回答正确" : "Correct"}</b>{question.rationale && read(question.rationale, locale)}</span></p>}
   </fieldset>;
 }
 
@@ -766,6 +758,7 @@ function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson;
       <span>{locale === "zh" ? "这一章要解决什么" : "What this lesson solves"}</span>
       <h2>{read(lesson.goal, locale)}</h2>
       <p>{read(lesson.summary, locale)} {locale === "zh" ? "下面四步先建立判断，再用同一个演示验证，最后把观察结果用于练习。" : "The four steps below build the idea, verify it in one demo, and reuse the observation in a short exercise."}</p>
+      {lesson.scenario && <p className="callout scenario-callout" data-tone="info"><b>{locale === "zh" ? "真实场景" : "In the wild"}</b>{read(lesson.scenario, locale)}</p>}
     </section>
     <section className="learning-block prediction-block" id="step-prediction" tabIndex={-1}>
       <span className="step-label">01 · {locale === "zh" ? "建立初始判断" : "Make an initial judgement"}</span>
@@ -785,16 +778,23 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
     <section className="concept-sequence" id="step-concepts" tabIndex={-1}>
       <div className="sequence-heading"><span className="step-label">02 · {locale === "zh" ? "把原理连起来" : "Connect the ideas"}</span><h2>{locale === "zh" ? "从结构到规则，按顺序理解" : "Follow the reasoning from structure to rule"}<AnchorButton target="step-concepts" label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h2><p>{locale === "zh" ? "每一步只回答一个问题。后一步会使用前一步的结论。" : "Each step answers one question and uses the conclusion before it."}</p></div>
       {lesson.theory.map((block, index) => {
-        const point = keyPointFor(lesson, index);
-        return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3 id={`concept-${index + 1}`} tabIndex={-1}>{read(block.heading, locale)}<AnchorButton target={`concept-${index + 1}`} label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3><p>{read(block.body, locale)}</p><div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div></div></section>;
+        const point = keyPointFor(lesson, block);
+        return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3 id={`concept-${index + 1}`} tabIndex={-1}>{read(block.heading, locale)}<AnchorButton target={`concept-${index + 1}`} label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3><p>{read(block.body, locale)}</p>{point && <div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div>}{block.why && <p className="concept-why"><b>{zh ? "为什么" : "Why"}</b>{read(block.why, locale)}</p>}{block.snippet && <div className="code-block concept-snippet"><div>{zh ? "最小示例" : "Minimal example"}</div><pre><code>{block.snippet}</code></pre></div>}{block.pitfall && <p className="callout concept-pitfall" data-tone="warn"><b>{zh ? "容易踩坑" : "Watch out"}</b>{read(block.pitfall, locale)}</p>}{block.refs && block.refs.length > 0 && <p className="concept-refs">{zh ? "延伸阅读" : "Further reading"}{block.refs.map((ref) => <a href={ref.href} target="_blank" rel="noreferrer" key={ref.href}>{ref.label}</a>)}</p>}</div></section>;
       })}
     </section>
     <section className="learning-block mistake-block callout" data-tone="warn"><h3 className="callout-title"><Lightbulb weight="fill" />{read(ui.mistakes, locale)}</h3><ul>{lesson.mistakes.map((mistake) => <li key={mistake.zh}>{read(mistake, locale)}</li>)}</ul></section>
     <section className="learning-block property-table" id="keypoints" tabIndex={-1}>
       <h2>{zh ? "属性速查" : "Property reference"}<AnchorButton target="keypoints" label={zh ? "定位到本节" : "Focus this section"} /></h2>
       <table>
-        <thead><tr><th scope="col">{zh ? "属性 / 写法" : "Property"}</th><th scope="col">{zh ? "作用" : "What it does"}</th></tr></thead>
-        <tbody>{lesson.keyPoints.map((point) => <tr key={point.term}><td><code>{point.term}</code></td><td>{read(point.desc, locale)}</td></tr>)}</tbody>
+        <thead><tr><th scope="col">{zh ? "属性 / 写法" : "Property"}</th><th scope="col">{zh ? "作用" : "What it does"}</th><th scope="col">{zh ? "对应概念" : "Concept"}</th></tr></thead>
+        <tbody>{lesson.keyPoints.map((point) => {
+          const concepts = conceptNumbersFor(lesson, point.term);
+          return <tr key={point.term}>
+            <td><code>{point.term}</code></td>
+            <td>{read(point.desc, locale)}{point.detail && <em className="keypoint-detail">{read(point.detail, locale)}</em>}</td>
+            <td className={concepts.length ? "keypoint-concept" : "keypoint-concept is-extra"}>{concepts.length ? concepts.map((n) => String(n).padStart(2, "0")).join(" · ") : (zh ? "补充" : "extra")}</td>
+          </tr>;
+        })}</tbody>
       </table>
       {lesson.id === "patterns" && <table className="tool-choice">
         <caption>{zh ? "怎么选布局工具" : "Choosing a layout tool"}</caption>
@@ -846,6 +846,7 @@ function LessonCheck({ lesson, locale, isDone, savedEvidence, onComplete, onEvid
       <div className="check-actions"><button className="button" disabled={isDone || !predicted || !tried || answer === null} onClick={submit}>{isDone ? <Check weight="bold" /> : <Play />}{isDone ? (locale === "zh" ? "学习证据已完成" : "Learning evidence complete") : (locale === "zh" ? "检查即时题" : "Check answer")}</button></div>
       {!isDone && (!predicted || !tried || answer === null) && <p className="missing-requirement"><LockKey />{!predicted ? (locale === "zh" ? "还需先完成预测" : "Complete the prediction first") : !tried ? (locale === "zh" ? "还需在右侧教学板达到全部目标" : "Match every target in the board") : (locale === "zh" ? "还需选择一个答案" : "Choose an answer")}</p>}
       {checked && <p className={correct ? "feedback correct" : "feedback"}>{correct ? (locale === "zh" ? "回答正确，三项学习证据已满足。现在可以完成章末小测。" : "Correct. All three learning checks are complete. You can now take the chapter quiz.") : (locale === "zh" ? `你选择了“${answer === null ? "" : read(activity.checkOptions[answer], locale)}”。再想一想：刚才调整的是尺寸、内容，还是元素之间的布局关系？` : `You chose “${answer === null ? "" : read(activity.checkOptions[answer], locale)}”. Reconsider whether the demo changed size, content, or the relationship between elements.`)}</p>}
+      {lesson.checklist && lesson.checklist.length > 0 && <div className="lesson-checklist"><h3>{locale === "zh" ? "交给别人前，先自查这几项" : "Check these before you hand it over"}</h3><ul>{lesson.checklist.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul></div>}
     </section>
   </>;
 }
