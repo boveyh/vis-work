@@ -474,6 +474,19 @@ footer a { grid-column: 2; grid-row: 1 / 3; color: var(--accent); font-weight: 7
 .bank-explain p { display: grid; gap: 3px; margin: 0; font-size: 13px; line-height: 1.6; }
 .bank-explain b { color: var(--accent); font-size: 11.5px; }
 .bank-question-actions { justify-self: start; }
+.bank-option { display: flex; align-items: center; gap: 9px; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.bank-option:hover { color: var(--text); }
+.bank-options li.is-picked { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--text); }
+.bank-options li.is-picked .bank-option > i { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surface); }
+.bank-guide { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border: 1px dashed color-mix(in srgb, var(--danger) 45%, var(--line)); border-radius: 8px; background: color-mix(in srgb, var(--danger) 8%, var(--surface)); color: var(--text); font-size: 13px; line-height: 1.55; }
+.bank-guide svg { flex: none; margin-top: 2px; color: var(--danger); }
+.bank-mode { display: inline-flex; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.bank-mode .text-button { border-color: transparent; background: transparent; }
+.bank-mode .text-button.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); font-weight: 700; }
+.bank-score { display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font: 700 12.5px ui-monospace, monospace; }
+.bank-solved { display: inline-flex; align-items: center; gap: 6px; color: var(--success); font-size: 13px; font-weight: 800; }
+.bank-solved svg { width: 15px; height: 15px; }
+.bank-question.is-solved { border-color: color-mix(in srgb, var(--success) 42%, var(--line)); }
 
 /* ---------- responsive ---------- */
 @media (min-width: 1600px) {

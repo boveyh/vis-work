@@ -363,17 +363,33 @@ function Course() {
     <ChapterList locale={locale} done={done} practiced={practiced} chapterPassed={chapterPassed} stagePassed={stagePassed} />
   </main><Footer locale={locale} /></Shell>;
 }
-function BankQuestion({ question, index, locale, revealed, onToggle }: { question: QuizQuestion; index: number; locale: Locale; revealed: boolean; onToggle: () => void }) {
+type BankMode = "review" | "quiz";
+
+function BankQuestion({ question, index, locale, revealed, mode, picked, onToggle, onChoose }: { question: QuizQuestion; index: number; locale: Locale; revealed: boolean; mode: BankMode; picked?: number; onToggle: () => void; onChoose: (index: number) => void }) {
   const zh = locale === "zh";
-  return <article className="bank-question">
+  const solving = mode === "quiz";
+  const solved = solving && picked === question.answer;
+  const showAnswer = revealed || solved;
+  const guide = solving && picked !== undefined && picked !== question.answer;
+  return <article className={`bank-question ${solved ? "is-solved" : ""}`}>
     <header><span className="bank-num">{String(index + 1).padStart(2, "0")}</span><h4>{read(question.prompt, locale)}</h4></header>
-    <ol className="bank-options">{question.options.map((option, optionIndex) => <li className={revealed && optionIndex === question.answer ? "is-answer" : ""} key={option.zh}>
-      {revealed && optionIndex === question.answer ? <Check weight="bold" /> : <i aria-hidden="true" />}
-      <span>{read(option, locale)}</span>
-      {revealed && optionIndex === question.answer && <em>{zh ? "正确答案" : "Answer"}</em>}
-    </li>)}</ol>
-    {revealed && <div className="bank-explain"><p><b>{zh ? "知识点" : "Concept"}</b>{read(question.concept, locale)}</p><p><b>{zh ? "引导" : "Guide"}</b>{read(question.hint, locale)}</p></div>}
-    <div className="bank-question-actions"><button className="text-button" onClick={onToggle} aria-expanded={revealed}>{revealed ? (zh ? "隐藏答案" : "Hide answer") : (zh ? "显示答案" : "Show answer")}</button></div>
+    <ol className="bank-options">{question.options.map((option, optionIndex) => {
+      const isAnswer = showAnswer && optionIndex === question.answer;
+      const isPicked = solving && picked === optionIndex;
+      const body = <>{isAnswer ? <Check weight="bold" /> : <i aria-hidden="true" />}<span>{read(option, locale)}</span>{isAnswer && <em>{zh ? "正确答案" : "Answer"}</em>}</>;
+      return <li className={`${isAnswer ? "is-answer" : ""}${isPicked && !isAnswer ? " is-picked" : ""}`} key={option.zh}>
+        {solving ? <button className="bank-option" onClick={() => onChoose(optionIndex)} aria-pressed={isPicked}>{body}</button> : body}
+      </li>;
+    })}</ol>
+    {showAnswer && <div className="bank-explain"><p><b>{zh ? "知识点" : "Concept"}</b>{read(question.concept, locale)}</p><p><b>{zh ? "引导" : "Guide"}</b>{read(question.hint, locale)}</p></div>}
+    {guide && !showAnswer && <p className="bank-guide"><Lightbulb weight="fill" /><span>{read(question.hint, locale)}</span></p>}
+    <div className="bank-question-actions">
+      {solving
+        ? solved
+          ? <span className="bank-solved"><Check weight="bold" />{zh ? "已答对" : "Solved"}</span>
+          : <button className="text-button" onClick={onToggle}>{zh ? "查看答案" : "Reveal answer"}</button>
+        : <button className="text-button" onClick={onToggle} aria-expanded={revealed}>{revealed ? (zh ? "隐藏答案" : "Hide answer") : (zh ? "显示答案" : "Show answer")}</button>}
+    </div>
   </article>;
 }
 
@@ -384,9 +400,9 @@ type BankGroupData = {
   stageQuestions: QuizQuestion[];
 };
 
-function BankGroup({ group, locale, chapterPassed, stagePassed, revealed, onToggle }: { group: BankGroupData; locale: Locale; chapterPassed: string[]; stagePassed: string[]; revealed: Record<string, boolean>; onToggle: (id: string) => void }) {
+function BankGroup({ group, locale, chapterPassed, stagePassed, revealed, mode, picked, onToggle, onChoose }: { group: BankGroupData; locale: Locale; chapterPassed: string[]; stagePassed: string[]; revealed: Record<string, boolean>; mode: BankMode; picked: Record<string, number>; onToggle: (id: string) => void; onChoose: (id: string, index: number) => void }) {
   const zh = locale === "zh";
-  const questionsOf = (questions: QuizQuestion[]) => questions.map((question, index) => <BankQuestion question={question} index={index} locale={locale} revealed={Boolean(revealed[question.id])} onToggle={() => onToggle(question.id)} key={question.id} />);
+  const questionsOf = (questions: QuizQuestion[]) => questions.map((question, index) => <BankQuestion question={question} index={index} locale={locale} revealed={Boolean(revealed[question.id])} mode={mode} picked={picked[question.id]} onToggle={() => onToggle(question.id)} onChoose={(optionIndex) => onChoose(question.id, optionIndex)} key={question.id} />);
   return <section className="bank-group">
     <header className="bank-group-head"><span className="stage-index">{String(stages.indexOf(group.stage) + 1).padStart(2, "0")}</span><div><h2>{read(group.stage.name, locale)}</h2><p>{read(group.stage.desc, locale)}</p></div></header>
     {group.chapters.map((entry) => <article className="bank-set" key={entry.lesson.id}>
@@ -417,6 +433,8 @@ function QuestionBank() {
   const [query, setQuery] = useState("");
   const [onlyUnpassed, setOnlyUnpassed] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [mode, setMode] = useState<BankMode>("review");
+  const [picked, setPicked] = useState<Record<string, number>>({});
 
   const matches = (question: QuizQuestion) => {
     const needle = query.trim().toLowerCase();
@@ -437,6 +455,8 @@ function QuestionBank() {
   });
   const totalQuestions = groups.reduce((sum, group) => sum + group.chapters.reduce((n, entry) => n + entry.quiz.questions.length, 0) + (group.stageQuiz?.questions.length ?? 0), 0);
   const allIds = groups.flatMap((group) => [...group.chapters.flatMap((entry) => entry.quiz.questions), ...(group.stageQuiz?.questions ?? [])]).map((question) => question.id);
+  const answerById = Object.fromEntries(groups.flatMap((group) => [...group.chapters.flatMap((entry) => entry.quiz.questions), ...(group.stageQuiz?.questions ?? [])]).map((question) => [question.id, question.answer]));
+  const solvedCount = allIds.filter((id) => picked[id] === answerById[id]).length;
   const visibleGroups = groups
     .filter((group) => stageKey === "all" || group.stage.key === stageKey)
     .map((group) => ({
@@ -449,27 +469,37 @@ function QuestionBank() {
     .filter((group) => group.chapters.length > 0 || group.stageQuestions.length > 0);
   const shown = visibleGroups.reduce((sum, group) => sum + group.chapters.reduce((n, entry) => n + entry.questions.length, 0) + group.stageQuestions.length, 0);
   const toggle = (id: string) => setRevealed((previous) => ({ ...previous, [id]: !previous[id] }));
+  const choose = (id: string, index: number) => setPicked((previous) => ({ ...previous, [id]: index }));
 
   return <Shell><main className="page-main bank-page">
     <header className="page-header">
       <p className="eyebrow">QUESTION BANK</p>
       <h1>{read(ui.navQuestions, locale)}</h1>
-      <p>{zh ? `共 ${totalQuestions} 道单选题：8 章各 4 道章末题、4 个阶段各 10 道综合题，两部分题目不重复。答案默认隐藏，先自测再展开。` : `All ${totalQuestions} single-choice questions: four per chapter quiz and ten per stage test, with no reused prompts. Answers start hidden so you can self-test first.`}</p>
+      <p>{zh ? `共 ${totalQuestions} 道单选题：8 章各 4 道章末题、4 个阶段各 10 道综合题，两部分题目不重复。默认「复习模式」直接看答案，切到「自测模式」则先作答、答对才显示答案。` : `All ${totalQuestions} single-choice questions: four per chapter quiz and ten per stage test, with no reused prompts. Review mode reveals answers; self-test mode makes you answer first and only reveals once you are right.`}</p>
     </header>
     <section className="bank-toolbar" aria-label={zh ? "筛选与搜索" : "Filters and search"}>
       <label>{zh ? "阶段" : "Stage"}<select value={stageKey} onChange={(event) => { setStageKey(event.target.value); setChapterId("all"); }}><option value="all">{zh ? "全部阶段" : "All stages"}</option>{stages.map((stage) => <option value={stage.key} key={stage.key}>{read(stage.name, locale)}</option>)}</select></label>
       <label>{zh ? "章节" : "Chapter"}<select value={chapterId} onChange={(event) => setChapterId(event.target.value)}><option value="all">{zh ? "全部章节" : "All chapters"}</option>{lessons.map((lesson) => <option value={lesson.id} key={lesson.id}>{read(lesson.title, locale)}</option>)}</select></label>
       <label className="bank-search">{zh ? "搜索" : "Search"}<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={zh ? "题干 / 选项 / 知识点关键词" : "Keyword in prompt, options or concept"} /></label>
       <label className="bank-toggle"><input type="checkbox" checked={onlyUnpassed} onChange={(event) => setOnlyUnpassed(event.target.checked)} />{zh ? "只看未通过" : "Unpassed only"}</label>
+      <div className="bank-mode" role="group" aria-label={zh ? "学习模式" : "Study mode"}>
+        <button className={`text-button${mode === "review" ? " is-active" : ""}`} aria-pressed={mode === "review"} onClick={() => setMode("review")}>{zh ? "复习模式" : "Review"}</button>
+        <button className={`text-button${mode === "quiz" ? " is-active" : ""}`} aria-pressed={mode === "quiz"} onClick={() => { setMode("quiz"); setRevealed({}); }}>{zh ? "自测模式" : "Self-test"}</button>
+      </div>
       <div className="bank-actions">
-        <button className="text-button" onClick={() => setRevealed(Object.fromEntries(allIds.map((id) => [id, true])))}>{zh ? "全部显示答案" : "Show all answers"}</button>
-        <button className="text-button" onClick={() => setRevealed({})}>{zh ? "全部隐藏答案" : "Hide all answers"}</button>
+        {mode === "review" ? <>
+          <button className="text-button" onClick={() => setRevealed(Object.fromEntries(allIds.map((id) => [id, true])))}>{zh ? "全部显示答案" : "Show all answers"}</button>
+          <button className="text-button" onClick={() => setRevealed({})}>{zh ? "全部隐藏答案" : "Hide all answers"}</button>
+        </> : <>
+          <span className="bank-score">{zh ? `已答对 ${solvedCount} / ${totalQuestions}` : `${solvedCount} / ${totalQuestions} solved`}</span>
+          <button className="text-button" onClick={() => setPicked({})}>{zh ? "重置作答" : "Reset answers"}</button>
+        </>}
       </div>
     </section>
     <p className="bank-summary" aria-live="polite">{zh ? `当前显示 ${shown} / ${totalQuestions} 题` : `Showing ${shown} of ${totalQuestions} questions`}</p>
     {visibleGroups.length === 0
       ? <p className="bank-empty">{zh ? "没有符合条件的题目，换个筛选或关键词试试。" : "No questions match these filters. Try another keyword."}</p>
-      : visibleGroups.map((group) => <BankGroup group={group} locale={locale} chapterPassed={chapterPassed} stagePassed={stagePassed} revealed={revealed} onToggle={toggle} key={group.stage.key} />)}
+      : visibleGroups.map((group) => <BankGroup group={group} locale={locale} chapterPassed={chapterPassed} stagePassed={stagePassed} revealed={revealed} mode={mode} picked={picked} onToggle={toggle} onChoose={choose} key={group.stage.key} />)}
   </main><Footer locale={locale} /></Shell>;
 }
 
@@ -513,7 +543,8 @@ function keyPointFor(lesson: Lesson, index: number) {
   return lesson.keyPoints[indexes[lesson.id]?.[index] ?? index % lesson.keyPoints.length];
 }
 
-const QUIZ_DRAFT_VERSION = 1;
+/* Draft version 2: chapter options were reordered, so older drafts no longer describe the same choices. */
+const QUIZ_DRAFT_VERSION = 2;
 const LESSON_DRAFT_VERSION = 1;
 
 const quizQuestionValid = (question: QuizQuestion) => Array.isArray(question.options) && question.options.length > 0
