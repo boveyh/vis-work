@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Code, Copy, Lightbulb, List, LockKey, Moon, Play, Sun, TextAlignLeft, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, Check, Copy, Lightbulb, List, LockKey, Moon, Play, Sun, X } from "@phosphor-icons/react";
 import { lessons, stageOf, stages, t, ui, type Copy as LocalizedCopy, type DemoKind, type Lesson, type Locale } from "./data";
 import { chapterQuizzes, stageQuizzes, type Quiz, type QuizQuestion } from "./quizData";
 
@@ -11,37 +11,56 @@ const localeOf = (value?: string): Locale => (value === "en" ? "en" : "zh");
 const sectionId = (lesson: Lesson) => `${lesson.id}:complete`;
 const allSectionIds = lessons.map(sectionId);
 
-function readProgress() {
+/* Storage access is wrapped so answering keeps working when localStorage is blocked. */
+const readRaw = (key: string) => {
+  try { return localStorage.getItem(key); } catch { return null; }
+};
+const writeRaw = (key: string, value: string) => {
+  try { localStorage.setItem(key, value); return true; } catch { return false; }
+};
+const removeRaw = (key: string) => {
+  try { localStorage.removeItem(key); } catch { /* storage unavailable, the page still works */ }
+};
+const parseList = (raw: string | null) => {
   try {
-    const saved = JSON.parse(localStorage.getItem("layout-lab-section-progress") || "[]");
-    if (Array.isArray(saved) && saved.length) return lessons.filter((lesson) => saved.includes(sectionId(lesson)) || lesson.theory.every((_, index) => saved.includes(`${lesson.id}:${index + 1}`))).map(sectionId);
-    const legacy = JSON.parse(localStorage.getItem("layout-lab-progress") || "[]");
-    if (!Array.isArray(legacy)) return [];
-    return lessons.filter((lesson) => legacy.includes(lesson.id)).map(sectionId);
+    const parsed = JSON.parse(raw || "[]");
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
   } catch { return []; }
+};
+const parseRecord = (raw: string | null) => {
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch { return {}; }
+};
+const storageAvailable = (() => {
+  const probe = "layout-lab-storage-probe";
+  if (!writeRaw(probe, "ok")) return false;
+  const ok = readRaw(probe) === "ok";
+  removeRaw(probe);
+  return ok;
+})();
+
+function readProgress() {
+  const saved = parseList(readRaw("layout-lab-section-progress"));
+  if (saved.length) return lessons.filter((lesson) => saved.includes(sectionId(lesson)) || lesson.theory.every((_, index) => saved.includes(`${lesson.id}:${index + 1}`))).map(sectionId);
+  const legacy = parseList(readRaw("layout-lab-progress"));
+  return lessons.filter((lesson) => legacy.includes(lesson.id)).map(sectionId);
 }
 
 function readPracticed() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("layout-lab-practice-progress") || "[]");
-    return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : [];
-  } catch { return []; }
+  return parseList(readRaw("layout-lab-practice-progress"));
 }
 
 function readStringList(key: string) {
-  try {
-    const saved = JSON.parse(localStorage.getItem(key) || "[]");
-    return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : [];
-  } catch { return []; }
+  return parseList(readRaw(key));
 }
 
 type LessonEvidence = { predicted: boolean; practiced: boolean; instantCheckPassed: boolean };
 
 function readEvidence() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("layout-lab-evidence") || "{}");
-    if (saved && typeof saved === "object" && !Array.isArray(saved) && Object.keys(saved).length) return saved as Record<string, LessonEvidence>;
-  } catch { /* fall through to migration */ }
+  const saved = parseRecord(readRaw("layout-lab-evidence"));
+  if (Object.keys(saved).length) return saved as unknown as Record<string, LessonEvidence>;
   return Object.fromEntries(readProgress().map((id) => [id.split(":")[0], { predicted: true, practiced: true, instantCheckPassed: true }]));
 }
 
@@ -66,21 +85,21 @@ function useProgress() {
     if (sections.includes(id)) return;
     const next = [...sections, id];
     setSections(next);
-    try { localStorage.setItem("layout-lab-section-progress", JSON.stringify(next)); } catch { /* course still works */ }
+    writeRaw("layout-lab-section-progress", JSON.stringify(next));
     window.dispatchEvent(new Event("layout-progress"));
   };
   const markPracticed = (lessonId: string) => {
     if (practiced.includes(lessonId)) return;
     const next = [...practiced, lessonId];
     setPracticed(next);
-    try { localStorage.setItem("layout-lab-practice-progress", JSON.stringify(next)); } catch { /* course still works */ }
+    writeRaw("layout-lab-practice-progress", JSON.stringify(next));
     window.dispatchEvent(new Event("layout-progress"));
   };
   const recordEvidence = (lessonId: string, patch: Partial<LessonEvidence>) => {
     const current = evidence[lessonId] ?? { predicted: false, practiced: false, instantCheckPassed: false };
     const next = { ...evidence, [lessonId]: { ...current, ...patch } };
     setEvidence(next);
-    try { localStorage.setItem("layout-lab-evidence", JSON.stringify(next)); } catch { /* course still works */ }
+    writeRaw("layout-lab-evidence", JSON.stringify(next));
     window.dispatchEvent(new Event("layout-progress"));
   };
   const markPassed = (key: "layout-lab-chapter-quizzes" | "layout-lab-stage-tests", id: string) => {
@@ -88,14 +107,14 @@ function useProgress() {
     if (current.includes(id)) return;
     const next = [...current, id];
     if (key === "layout-lab-chapter-quizzes") setChapterPassed(next); else setStagePassed(next);
-    try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* course still works */ }
+    writeRaw(key, JSON.stringify(next));
     window.dispatchEvent(new Event("layout-progress"));
   };
   const toggle = (lessonId: string) => {
     if (lessonId.includes(":")) {
       const next = sections.includes(lessonId) ? sections.filter((id) => id !== lessonId) : [...sections, lessonId];
       setSections(next);
-      try { localStorage.setItem("layout-lab-section-progress", JSON.stringify(next)); } catch { /* course still works */ }
+      writeRaw("layout-lab-section-progress", JSON.stringify(next));
       window.dispatchEvent(new Event("layout-progress"));
       return;
     }
@@ -104,7 +123,7 @@ function useProgress() {
     const ids = [sectionId(lesson)];
     const next = ids.every((id) => sections.includes(id)) ? sections.filter((id) => !ids.includes(id)) : [...new Set([...sections, ...ids])];
     setSections(next);
-    try { localStorage.setItem("layout-lab-section-progress", JSON.stringify(next)); } catch { /* course still works */ }
+    writeRaw("layout-lab-section-progress", JSON.stringify(next));
     window.dispatchEvent(new Event("layout-progress"));
   };
   const done = lessons.filter((lesson) => sections.includes(sectionId(lesson))).map((lesson) => lesson.id);
@@ -125,15 +144,15 @@ function Shell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { completedCount, totalCount, nextHref } = useProgress();
-  const [dark, setDark] = useState(() => localStorage.getItem("layout-lab-theme") === "dark");
+  const [dark, setDark] = useState(() => readRaw("layout-lab-theme") === "dark");
 
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en-US";
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     document.title = locale === "zh" ? "Layout Lab - 前端布局实验室" : "Layout Lab - Interactive CSS Course";
     document.querySelector('meta[name="description"]')?.setAttribute("content", locale === "zh" ? "按阶段递进、每个知识点都能运行的前端布局课程。" : "A staged front-end layout course where every concept is runnable.");
-    localStorage.setItem("layout-lab-locale", locale);
-    localStorage.setItem("layout-lab-theme", dark ? "dark" : "light");
+    writeRaw("layout-lab-locale", locale);
+    writeRaw("layout-lab-theme", dark ? "dark" : "light");
   }, [locale, dark]);
 
   const switchLocale = () => {
@@ -156,6 +175,7 @@ function Shell({ children }: { children: ReactNode }) {
         <button className="icon-button" onClick={() => setDark(!dark)} aria-label={dark ? "Use light theme" : "Use dark theme"}>{dark ? <Sun /> : <Moon />}</button>
       </div>
     </header>
+    {!storageAvailable && <p className="storage-notice" role="status">{locale === "zh" ? "浏览器本地存储不可用：你仍然可以答题，但本次进度和选择不会被保存。" : "Browser storage is unavailable: you can still answer, but this session's progress and selections will not be saved."}</p>}
     {children}
   </>;
 }
@@ -196,156 +216,6 @@ function taskFor(lesson: Lesson): DemoTask {
   }
   Object.assign(target, { columns: 3, gap: 32, padding: 32 });
   return { title: t("完成响应式页面骨架", "Complete the responsive page shell"), brief: t("把区域组织为 3 列，使用 32px 间距和 32px 安全边距。", "Organize the regions into three columns with a 32px gap and 32px safe inset."), target, conditions: [{ label: t("列数为 3", "three columns"), test: (s) => s.columns === 3 }, { label: t("区域间距为 32px", "region gap is 32px"), test: (s) => s.gap === 32 }, { label: t("安全边距为 32px", "safe inset is 32px"), test: (s) => s.padding === 32 }], hint: t("先保证区域关系，再统一间距尺度。", "Establish region relationships before standardizing spacing.") };
-}
-
-const DEMO_STATS = [
-  { label: { zh: "访问量", en: "Visits" }, value: "12.4k", tone: "tone-1" },
-  { label: { zh: "转化率", en: "Conversion" }, value: "3.8%", tone: "tone-2" },
-  { label: { zh: "订单", en: "Orders" }, value: "1,204", tone: "tone-3" },
-  { label: { zh: "退款", en: "Refunds" }, value: "12", tone: "tone-4" },
-];
-
-const DEMO_PROJECTS = [
-  { zh: "设计系统", en: "Design system", noteZh: "组件与样式令牌", noteEn: "Components and tokens", tone: "tone-1" },
-  { zh: "数据看板", en: "Analytics board", noteZh: "图表与筛选器", noteEn: "Charts and filters", tone: "tone-2" },
-  { zh: "内容站点", en: "Content site", noteZh: "文章与目录", noteEn: "Articles and table of contents", tone: "tone-3" },
-];
-
-function DemoContent({ kind, locale, style }: { kind: DemoKind; locale: Locale; style?: CSSProperties }) {
-  const zh = locale === "zh";
-  switch (kind) {
-    case "navbar":
-      return <>
-        <span className="demo-logo">Layout Lab</span>
-        <span className="demo-link is-active">{zh ? "课程" : "Course"}</span>
-        <span className="demo-link">{zh ? "挑战" : "Challenge"}</span>
-        <span className="demo-link">{zh ? "说明" : "About"}</span>
-        <span className="demo-cta">{zh ? "继续学习" : "Resume"}</span>
-      </>;
-    case "dashboard":
-      return <>
-        {DEMO_STATS.map((stat) => <article className={`demo-stat ${stat.tone}`} key={stat.value}>
-          <span>{read(stat.label, locale)}</span>
-          <strong>{stat.value}</strong>
-          <i />
-        </article>)}
-      </>;
-    case "split":
-      return <>
-        <section className="demo-panel demo-panel-main">
-          <strong>{zh ? "主要内容" : "Main content"}</strong>
-          <p>{zh ? "正文、图表和列表放在这里，窄屏下优先展示。" : "Body text, charts and lists live here and stay first on narrow screens."}</p>
-        </section>
-        <aside className="demo-panel demo-panel-aside">
-          <strong>{zh ? "辅助内容" : "Aside"}</strong>
-          <p>{zh ? "目录、推荐和筛选，空间不足时自动换到下方。" : "Table of contents, related links and filters drop below when space runs out."}</p>
-        </aside>
-      </>;
-    case "landing":
-      return <>
-        <section className="demo-hero">
-          <strong>{zh ? "你好，我是一名前端工程师" : "Hi, I am a front-end engineer"}</strong>
-          <p>{zh ? "专注布局、可访问性与性能。" : "Focused on layout, accessibility and performance."}</p>
-          <span className="demo-cta">{zh ? "查看作品" : "View work"}</span>
-        </section>
-        {DEMO_PROJECTS.map((project, index) => <article className={`demo-project ${project.tone}`} key={project.zh}>
-          <span>{String(index + 1).padStart(2, "0")}</span>
-          <strong>{zh ? project.zh : project.en}</strong>
-          <p>{zh ? project.noteZh : project.noteEn}</p>
-        </article>)}
-      </>;
-    case "project":
-      return <>
-        <nav className="demo-page-nav">{zh ? "项目导航" : "Project nav"}</nav>
-        <section className="demo-panel demo-panel-main">
-          <strong>{zh ? "项目内容" : "Project content"}</strong>
-          <p>{zh ? "用 Grid 划分页面骨架，内容区自适应剩余高度。" : "Grid divides the shell while the content area takes the leftover height."}</p>
-        </section>
-        <footer className="demo-page-foot">{zh ? "联系方式" : "Contact"}</footer>
-      </>;
-    case "overlay":
-      return <div className="demo-panel demo-panel-rel" style={style}>
-        <span className="demo-badge">{zh ? "新" : "New"}</span>
-        <strong>{zh ? "内容面板" : "Content panel"}</strong>
-        <p>{zh ? "角标以这个面板为参照，而不是整个页面。" : "The badge references this panel, not the whole page."}</p>
-      </div>;
-    case "card":
-      return <article className="demo-card" style={style}>
-        <span className="demo-chip">{zh ? "组件" : "Component"}</span>
-        <strong>{zh ? "内容卡片" : "Content card"}</strong>
-        <p>{zh ? "改变内边距，观察内容与边框之间的空间。" : "Change the padding to see the space between content and border."}</p>
-        <span className="demo-foot">{zh ? "固定宽度 280px" : "Fixed width 280px"}</span>
-      </article>;
-    default:
-      return <article className="demo-article" style={style}>
-        <header>
-          <span className="demo-chip">{zh ? "入门" : "Starter"}</span>
-          <strong>{zh ? "如何理解文档流" : "Understanding normal flow"}</strong>
-          <em>{zh ? "8 分钟阅读" : "8 min read"}</em>
-        </header>
-        <p>{zh ? "块级元素默认独占一行，从页面顶部向底部依次排列。" : "Block elements take a full row and stack from the top of the page downwards."}</p>
-        <aside className="demo-aside">
-          <span>{zh ? "相关：盒模型" : "Related: Box model"}</span>
-          <span>{zh ? "相关：Flexbox" : "Related: Flexbox"}</span>
-        </aside>
-      </article>;
-  }
-}
-function Playground({ lesson, locale, compact = false }: { lesson: Lesson; locale: Locale; compact?: boolean }) {
-  const [state, setState] = useState(initialDemo);
-  const [copied, setCopied] = useState(false);
-  const zh = locale === "zh";
-
-  const stageStyle: CSSProperties | undefined = (() => {
-    switch (lesson.demo) {
-      case "navbar":
-        return { display: "flex", alignItems: "center", flexDirection: state.direction as "row" | "column", justifyContent: state.justify, gap: state.gap };
-      case "dashboard":
-      case "split":
-        return { display: "grid", gridTemplateColumns: `repeat(${state.columns}, minmax(0, 1fr))`, gap: state.gap };
-      case "landing":
-        return { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: state.gap, padding: state.padding };
-      case "project":
-        return { display: "grid", gridTemplateColumns: `repeat(${state.columns}, minmax(0, 1fr))`, gap: state.gap, padding: state.padding };
-      default:
-        return undefined;
-    }
-  })();
-
-  const innerStyle: CSSProperties | undefined =
-    lesson.demo === "article" || lesson.demo === "card" || lesson.demo === "overlay" ? { padding: state.padding } : undefined;
-
-  const generated = useMemo(() => {
-    const lines: string[] = [];
-    if (lesson.demo === "navbar") {
-      lines.push("display: flex;", "align-items: center;", `flex-direction: ${state.direction};`, `justify-content: ${state.justify};`, `gap: ${state.gap}px;`);
-    } else if (lesson.demo === "dashboard" || lesson.demo === "split" || lesson.demo === "project") {
-      lines.push("display: grid;", `grid-template-columns: repeat(${state.columns}, minmax(0, 1fr));`, `gap: ${state.gap}px;`);
-      if (lesson.demo === "project") lines.push(`padding: ${state.padding}px;`);
-    } else if (lesson.demo === "landing") {
-      lines.push("display: grid;", "grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));", `gap: ${state.gap}px;`, `padding: ${state.padding}px;`);
-    } else {
-      lines.push("box-sizing: border-box;", `padding: ${state.padding}px;`);
-    }
-    return lines.join("\n");
-  }, [lesson.demo, state]);
-
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(generated); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { setCopied(false); }
-  };
-
-  return <div className={`playground ${compact ? "playground-compact" : ""}`}>
-    <div className="preview-head"><span>{zh ? "实时预览" : "Live preview"}</span><span className="viewport-label">{lesson.demo === "navbar" ? (zh ? "组件" : "Component") : (zh ? "容器" : "Container")}</span></div>
-    <div className="preview-stage" style={stageStyle}><DemoContent kind={lesson.demo} locale={locale} style={innerStyle} /></div>
-    <div className="controls">
-      {lesson.controls.includes("direction") && <label>flex-direction<select value={state.direction} onChange={(e) => setState({ ...state, direction: e.target.value })}><option>row</option><option>column</option><option>row-reverse</option><option>column-reverse</option></select></label>}
-      {lesson.controls.includes("justify") && <label>justify-content<select value={state.justify} onChange={(e) => setState({ ...state, justify: e.target.value })}><option>center</option><option>flex-start</option><option>flex-end</option><option>space-between</option><option>space-around</option></select></label>}
-      {lesson.controls.includes("columns") && <label>{zh ? "列数" : "Columns"}<input type="range" min="1" max="4" value={state.columns} onChange={(e) => setState({ ...state, columns: Number(e.target.value) })} /><output>{state.columns}</output></label>}
-      {lesson.controls.includes("gap") && <label>gap<input type="range" min="0" max="48" value={state.gap} onChange={(e) => setState({ ...state, gap: Number(e.target.value) })} /><output>{state.gap}px</output></label>}
-      {lesson.controls.includes("padding") && <label>padding<input type="range" min="0" max="56" value={state.padding} onChange={(e) => setState({ ...state, padding: Number(e.target.value) })} /><output>{state.padding}px</output></label>}
-    </div>
-    {!compact && <><pre className="generated"><code>{generated}</code></pre><div className="control-actions"><button className="text-button" onClick={copy}><Copy />{copied ? read(ui.copied, locale) : read(ui.copy, locale)}</button><button className="text-button" onClick={() => setState(initialDemo)}>{read(ui.reset, locale)}</button></div></>}
-  </div>;
 }
 
 function Diagram({ kind, state }: { kind: DemoKind; state: DemoState }) {
@@ -491,130 +361,6 @@ function Course() {
     <ChapterList locale={locale} done={done} practiced={practiced} chapterPassed={chapterPassed} stagePassed={stagePassed} />
   </main><Footer locale={locale} /></Shell>;
 }
-function LessonPage() {
-  const { locale: raw, lessonId } = useParams();
-  const locale = localeOf(raw);
-  const zh = locale === "zh";
-  const lesson = lessons.find((item) => item.id === lessonId);
-  const { done, toggle } = useProgress();
-  const [tab, setTab] = useState<"theory" | "code" | "demo">("theory");
-
-  if (!lesson) {
-    return <Shell><main className="page-main"><header className="page-header">
-      <h1>{read(ui.notFound, locale)}</h1>
-      <Link className="button" to={`/${locale}/course`}>{read(ui.backToCourse, locale)}</Link>
-    </header></main><Footer locale={locale} /></Shell>;
-  }
-
-  const index = lessons.indexOf(lesson);
-  const prev = index > 0 ? lessons[index - 1] : undefined;
-  const next = index < lessons.length - 1 ? lessons[index + 1] : undefined;
-  const stage = stageOf(lesson.stage);
-
-  return <Shell><main className="lesson-shell">
-    <aside className="lesson-nav">
-      <Link className="back-link" to={`/${locale}/course`}><ArrowLeft />{read(ui.back, locale)}</Link>
-      <div className="lesson-progress"><span>{read(ui.progress, locale)}</span><strong>{done.length} / {lessons.length}</strong></div>
-      <nav className="lesson-list">
-        {stages.map((item) => {
-          const group = lessons.filter((entry) => entry.stage === item.key);
-          return <div className="lesson-list-group" key={item.key}>
-            <p>{read(item.name, locale)}</p>
-            {group.map((entry) => <Link className={entry.id === lesson.id ? "active" : ""} key={entry.id} to={`/${locale}/lesson/${entry.id}`}>
-              <span>{String(entry.order).padStart(2, "0")}</span>{read(entry.title, locale)}{done.includes(entry.id) && <Check weight="bold" />}
-            </Link>)}
-          </div>;
-        })}
-      </nav>
-    </aside>
-
-    <article className="lesson-content">
-      <div className="lesson-title">
-        <div className="lesson-meta">
-          <span className="tag">{read(stage.name, locale)}</span>
-          <span>{lesson.order} / {lessons.length} {read(ui.chapter, locale)}</span>
-          <span>{read(lesson.duration, locale)}</span>
-          <span>{lesson.keyPoints.length} {read(ui.pointsCount, locale)}</span>
-        </div>
-        <h1>{read(lesson.title, locale)}</h1>
-        <p className="lesson-goal"><strong>{read(ui.goalLabel, locale)}</strong>{read(lesson.goal, locale)}</p>
-      </div>
-
-      <div className="lesson-tabs" role="tablist">
-        {(["theory", "code", "demo"] as const).map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>
-          {item === "theory" ? <TextAlignLeft /> : item === "code" ? <Code /> : <Play />}{read(ui[item], locale)}
-        </button>)}
-      </div>
-
-      {tab === "theory" && <section className="prose">
-        <div className="objectives">
-          <h2>{read(ui.objectives, locale)}</h2>
-          <ul>{lesson.objectives.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul>
-        </div>
-        <div className="theory-blocks">
-          {lesson.theory.map((block, blockIndex) => <section key={block.heading.zh}>
-            <h3><span>{String(blockIndex + 1).padStart(2, "0")}</span>{read(block.heading, locale)}</h3>
-            <p>{read(block.body, locale)}</p>
-          </section>)}
-        </div>
-        <div className="keypoints">
-          <h2>{read(ui.keyPoints, locale)}</h2>
-          <p>{read(ui.keyPointsHint, locale)}</p>
-          <dl>{lesson.keyPoints.map((point) => <div key={point.term}>
-            <dt><code>{point.term}</code></dt>
-            <dd>{read(point.desc, locale)}</dd>
-          </div>)}</dl>
-        </div>
-        <div className="mistakes">
-          <h2>{read(ui.mistakes, locale)}</h2>
-          <ul>{lesson.mistakes.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul>
-        </div>
-      </section>}
-      {tab === "code" && <section className="code-section">
-        <h2>{read(ui.code, locale)}</h2>
-        <p>{zh ? "HTML 建立结构，CSS 决定这一章关注的布局行为。先整体读一遍，再对照下面的练习逐步动手。" : "HTML builds the structure; CSS drives the layout behaviour this chapter focuses on. Read it once, then work through the practice steps below."}</p>
-        <div className="code-block">
-          <div>HTML</div>
-          <pre><code>{lesson.html}</code></pre>
-        </div>
-        <div className="code-block accent-code">
-          <div>CSS</div>
-          <pre><code>{lesson.css}</code></pre>
-        </div>
-        <div className="practice-steps">
-          <h2>{read(ui.practice, locale)}</h2>
-          <ol>{lesson.practice.map((item, stepIndex) => <li key={item.zh}>
-            <span>{String(stepIndex + 1).padStart(2, "0")}</span>
-            <p>{read(item, locale)}</p>
-          </li>)}</ol>
-        </div>
-      </section>}
-
-      {tab === "demo" && <section className="inline-demo">
-        <h2>{read(ui.demo, locale)}</h2>
-        <p>{read(ui.demoHint, locale)}</p>
-        <Playground lesson={lesson} locale={locale} />
-      </section>}
-
-      <section className="challenge-box">
-        <span>{read(ui.tryIt, locale)}</span>
-        <h2>{read(lesson.challenge, locale)}</h2>
-        <button className={done.includes(lesson.id) ? "button done" : "button"} onClick={() => toggle(lesson.id)}>
-          {done.includes(lesson.id) ? <Check weight="bold" /> : <Play />}
-          {done.includes(lesson.id) ? read(ui.completed, locale) : read(ui.complete, locale)}
-        </button>
-      </section>
-
-      <nav className="lesson-pagination">
-        {prev ? <Link to={`/${locale}/lesson/${prev.id}`}><ArrowLeft />{read(prev.title, locale)}</Link> : <span />}
-        {next && <Link to={`/${locale}/lesson/${next.id}`}>{read(next.title, locale)}<ArrowRight /></Link>}
-      </nav>
-    </article>
-
-    <aside className="lesson-preview"><Playground lesson={lesson} locale={locale} /></aside>
-  </main></Shell>;
-}
-
 type LearningActivity = {
   prediction: LocalizedCopy;
   predictionOptions: LocalizedCopy[];
@@ -655,12 +401,48 @@ function keyPointFor(lesson: Lesson, index: number) {
   return lesson.keyPoints[indexes[lesson.id]?.[index] ?? index % lesson.keyPoints.length];
 }
 
-function readQuizDraft(quizId: string) {
-  try {
-    const saved = JSON.parse(localStorage.getItem(`layout-lab-quiz-draft:${quizId}`) || "{}");
-    if (!saved || typeof saved !== "object" || Array.isArray(saved)) return {};
-    return Object.fromEntries(Object.entries(saved).filter(([, value]) => typeof value === "number")) as Record<string, number>;
-  } catch { return {}; }
+const QUIZ_DRAFT_VERSION = 1;
+const LESSON_DRAFT_VERSION = 1;
+
+const quizQuestionValid = (question: QuizQuestion) => Array.isArray(question.options) && question.options.length > 0
+  && Number.isInteger(question.answer) && question.answer >= 0 && question.answer < question.options.length;
+
+const quizDataValid = (quiz: Quiz) => quiz.questions.length > 0 && quiz.questions.every(quizQuestionValid);
+
+/* Drafts carry a version: an incompatible draft only loses the answers that can no longer be verified. */
+function readQuizDraft(quiz: Quiz) {
+  const record = parseRecord(readRaw(`layout-lab-quiz-draft:${quiz.id}`));
+  const versioned = record.v === QUIZ_DRAFT_VERSION && record.answers !== null && typeof record.answers === "object" && !Array.isArray(record.answers);
+  const source = (versioned ? record.answers : record.v === undefined ? record : {}) as Record<string, unknown>;
+  const answers: Record<string, number> = {};
+  for (const question of quiz.questions) {
+    const value = source[question.id];
+    if (typeof value === "number" && Number.isInteger(value) && value >= 0 && value < question.options.length) answers[question.id] = value;
+  }
+  const stale = Object.keys(record).length > 0 && (!versioned || Object.keys(source).length !== Object.keys(answers).length);
+  if (stale) writeQuizDraft(quiz.id, answers);
+  return answers;
+}
+
+function writeQuizDraft(quizId: string, answers: Record<string, number>) {
+  writeRaw(`layout-lab-quiz-draft:${quizId}`, JSON.stringify({ v: QUIZ_DRAFT_VERSION, answers }));
+}
+
+type LessonDraft = { prediction: number | null; answer: number | null; checked: boolean };
+
+function readLessonDraft(lessonId: string, predictionCount: number, answerCount: number): LessonDraft {
+  const record = parseRecord(readRaw(`layout-lab-lesson-draft:${lessonId}`));
+  const versioned = record.v === LESSON_DRAFT_VERSION;
+  const pick = (value: unknown, size: number) => (versioned && typeof value === "number" && Number.isInteger(value) && value >= 0 && value < size ? value : null);
+  const draft: LessonDraft = { prediction: pick(record.prediction, predictionCount), answer: pick(record.answer, answerCount), checked: versioned && record.checked === true };
+  if (Object.keys(record).length > 0 && !versioned) writeLessonDraft(lessonId, draft);
+  return draft;
+}
+
+function writeLessonDraft(lessonId: string, patch: Partial<LessonDraft>) {
+  const record = parseRecord(readRaw(`layout-lab-lesson-draft:${lessonId}`));
+  const base = record.v === LESSON_DRAFT_VERSION ? record : {};
+  writeRaw(`layout-lab-lesson-draft:${lessonId}`, JSON.stringify({ v: LESSON_DRAFT_VERSION, prediction: null, answer: null, checked: false, ...base, ...patch }));
 }
 
 function QuizQuestionView({ question, index, locale, answer, submitted, onAnswer }: { question: QuizQuestion; index: number; locale: Locale; answer?: number; submitted: boolean; onAnswer: (answer: number) => void }) {
@@ -680,59 +462,52 @@ function QuizQuestionView({ question, index, locale, answer, submitted, onAnswer
   </fieldset>;
 }
 
-function QuizPanel({ quiz, locale, passed, onPass, title, intro }: { quiz: Quiz; locale: Locale; passed: boolean; onPass: () => void; title: string; intro: string }) {
-  const [answers, setAnswers] = useState<Record<string, number>>(() => readQuizDraft(quiz.id));
+function QuizPanel({ quiz, locale, passed, onPass, title, intro, onProgress }: { quiz: Quiz; locale: Locale; passed: boolean; onPass: () => void; title: string; intro: string; onProgress?: (answered: number) => void }) {
+  const dataOk = quizDataValid(quiz);
+  const [answers, setAnswers] = useState<Record<string, number>>(() => (dataOk ? readQuizDraft(quiz) : {}));
   const [submitted, setSubmitted] = useState(false);
   const answeredCount = quiz.questions.filter((question) => answers[question.id] !== undefined).length;
   const correctCount = quiz.questions.filter((question) => answers[question.id] === question.answer).length;
   const remaining = quiz.questions.length - answeredCount;
+  useEffect(() => { onProgress?.(answeredCount); }, [answeredCount, onProgress]);
   const answer = (questionId: string, value: number) => {
     const next = { ...answers, [questionId]: value };
     setAnswers(next);
-    try { localStorage.setItem(`layout-lab-quiz-draft:${quiz.id}`, JSON.stringify(next)); } catch { /* quiz still works */ }
+    writeQuizDraft(quiz.id, next);
   };
   const submit = () => {
+    if (!dataOk) return;
     setSubmitted(true);
     if (correctCount === quiz.questions.length) onPass();
   };
   const retry = () => {
     setAnswers({});
     setSubmitted(false);
-    try { localStorage.removeItem(`layout-lab-quiz-draft:${quiz.id}`); } catch { /* quiz still works */ }
+    removeRaw(`layout-lab-quiz-draft:${quiz.id}`);
   };
   return <section className="quiz-panel" id={quiz.kind === "chapter" ? "chapter-quiz" : undefined}>
     <header className="quiz-header">
       <div><span>{quiz.kind === "chapter" ? (locale === "zh" ? "章末小测" : "Chapter quiz") : (locale === "zh" ? "阶段综合测试" : "Stage test")}</span><h2>{title}</h2><p>{intro}</p></div>
       <strong>{answeredCount} / {quiz.questions.length}</strong>
     </header>
+    {!dataOk && <p className="quiz-data-error" role="alert"><X />{locale === "zh" ? "题目数据缺失或答案索引越界，本次作答不会被判定为通过。可以先清空草稿再重试，已通过的历史记录不受影响。" : "Question data is missing or an answer index is out of range, so this attempt cannot be recorded as a pass. Clear the draft and retry; existing passes are untouched."}</p>}
     {passed && <div className="quiz-passed"><Check weight="bold" /><span><b>{locale === "zh" ? "已经通过" : "Passed"}</b>{locale === "zh" ? "通过记录会保留，你仍可以重新练习。" : "Your pass is saved, and you can still practise again."}</span><button className="text-button" onClick={retry}>{locale === "zh" ? "再练一次" : "Practise again"}</button></div>}
     <div className="quiz-questions">
       {quiz.questions.map((question, index) => <QuizQuestionView question={question} index={index} locale={locale} answer={answers[question.id]} submitted={submitted} onAnswer={(value) => answer(question.id, value)} key={question.id} />)}
     </div>
     <div className="quiz-submit">
-      <button className="button" disabled={remaining > 0} onClick={submit}><Play />{locale === "zh" ? "提交全部答案" : "Submit all answers"}</button>
-      <p>{remaining > 0 ? (locale === "zh" ? `还剩 ${remaining} 题未作答` : `${remaining} unanswered`) : submitted && correctCount < quiz.questions.length ? (locale === "zh" ? `还有 ${quiz.questions.length - correctCount} 题需要修改` : `${quiz.questions.length - correctCount} answers need revision`) : (locale === "zh" ? "全对后即可通过" : "Answer all correctly to pass")}</p>
+      <button className={`button${passed ? " done" : ""}`} disabled={!dataOk || remaining > 0} onClick={submit}>{passed ? <Check weight="bold" /> : <Play />}{locale === "zh" ? "提交全部答案" : "Submit all answers"}</button>
+      <p>{!dataOk ? (locale === "zh" ? "题目不可用，暂时无法提交" : "Questions unavailable, submitting is disabled") : remaining > 0 ? (locale === "zh" ? `还剩 ${remaining} 题未作答` : `${remaining} unanswered`) : submitted && correctCount < quiz.questions.length ? (locale === "zh" ? `还有 ${quiz.questions.length - correctCount} 题需要修改` : `${quiz.questions.length - correctCount} answers need revision`) : (locale === "zh" ? "全对后即可通过" : "Answer all correctly to pass")}</p>
     </div>
   </section>;
 }
 
-function SectionActivity({ lesson, locale, isDone, savedEvidence, onComplete, onEvidence, demoState }: { lesson: Lesson; locale: Locale; isDone: boolean; savedEvidence?: LessonEvidence; onComplete: () => void; onEvidence: (patch: Partial<LessonEvidence>) => void; demoState: DemoState }) {
-  const [prediction, setPrediction] = useState<number | null>(null);
-  const [answer, setAnswer] = useState<number | null>(null);
-  const [checked, setChecked] = useState(false);
-  const activity = activityFor(lesson);
-  const task = taskFor(lesson);
-  const taskPassed = task.conditions.every((condition) => condition.test(demoState));
-  const correct = checked && answer === activity.checkAnswer;
-  const predicted = isDone || Boolean(savedEvidence?.predicted) || prediction !== null;
-  const tried = isDone || Boolean(savedEvidence?.practiced) || taskPassed;
-  const answered = isDone || Boolean(savedEvidence?.instantCheckPassed) || correct;
-  const submit = () => {
-    setChecked(true);
-    if (prediction !== null && taskPassed && answer === activity.checkAnswer) {
-      onEvidence({ instantCheckPassed: true });
-      onComplete();
-    }
+function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson; locale: Locale; activity: LearningActivity; onEvidence: (patch: Partial<LessonEvidence>) => void }) {
+  const [prediction, setPrediction] = useState<number | null>(() => readLessonDraft(lesson.id, activity.predictionOptions.length, activity.checkOptions.length).prediction);
+  const choose = (index: number) => {
+    setPrediction(index);
+    writeLessonDraft(lesson.id, { prediction: index });
+    onEvidence({ predicted: true });
   };
   return <>
     <section className="learning-block situation-block">
@@ -744,9 +519,16 @@ function SectionActivity({ lesson, locale, isDone, savedEvidence, onComplete, on
       <span className="step-label">01 · {locale === "zh" ? "建立初始判断" : "Make an initial judgement"}</span>
       <h3>{locale === "zh" ? "先预测，再读解释" : "Predict before reading"}</h3>
       <p>{read(activity.prediction, locale)}</p>
-      <div className="quiz-options instant-options">{activity.predictionOptions.map((option, index) => <label className={prediction === index ? "selected" : ""} key={option.zh}><input type="radio" name={`${lesson.id}-prediction`} checked={prediction === index} onChange={() => { setPrediction(index); onEvidence({ predicted: true }); }} /><i aria-hidden="true" /><span>{read(option, locale)}</span></label>)}</div>
+      <div className="quiz-options instant-options">{activity.predictionOptions.map((option, index) => <label className={prediction === index ? "selected" : ""} key={option.zh}><input type="radio" name={`${lesson.id}-prediction`} checked={prediction === index} onChange={() => choose(index)} /><i aria-hidden="true" /><span>{read(option, locale)}</span></label>)}</div>
       {prediction !== null && <p className={prediction === activity.predictionAnswer ? "feedback correct" : "feedback"}>{prediction === activity.predictionAnswer ? (locale === "zh" ? "判断正确。继续读下面四步，弄清为什么。" : "Correct. Read the four steps below to understand why.") : (locale === "zh" ? "这个判断暂时不对。不要背答案，读完下面四步后再到演示里验证。" : "That judgement is not correct yet. Read the four steps, then verify it in the demo.")}</p>}
     </section>
+  </>;
+}
+
+/* Steps 02 and 03: reading order and the hands-on brief that points at the synchronized board. */
+function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
+  const task = taskFor(lesson);
+  return <>
     <section className="concept-sequence">
       <div className="sequence-heading"><span className="step-label">02 · {locale === "zh" ? "把原理连起来" : "Connect the ideas"}</span><h2>{locale === "zh" ? "从结构到规则，按顺序理解" : "Follow the reasoning from structure to rule"}</h2><p>{locale === "zh" ? "每一步只回答一个问题。后一步会使用前一步的结论。" : "Each step answers one question and uses the conclusion before it."}</p></div>
       {lesson.theory.map((block, index) => {
@@ -760,12 +542,41 @@ function SectionActivity({ lesson, locale, isDone, savedEvidence, onComplete, on
       <div className="board-pointer"><ArrowRight />{locale === "zh" ? "在右侧同步教学板中完成操作" : "Complete the task in the synchronized board"}</div>
     </section>
     <details className="full-code"><summary>{locale === "zh" ? "查看完整 HTML 与 CSS" : "View full HTML and CSS"}</summary><div className="code-block"><div>HTML</div><pre><code>{lesson.html}</code></pre></div><div className="code-block accent-code"><div>CSS</div><pre><code>{lesson.css}</code></pre></div></details>
+  </>;
+}
+
+/* Step 04: the instant check is answered from the result the student just produced on the board. */
+function LessonCheck({ lesson, locale, isDone, savedEvidence, onComplete, onEvidence, demoState }: { lesson: Lesson; locale: Locale; isDone: boolean; savedEvidence?: LessonEvidence; onComplete: () => void; onEvidence: (patch: Partial<LessonEvidence>) => void; demoState: DemoState }) {
+  const activity = activityFor(lesson);
+  const [initial] = useState(() => readLessonDraft(lesson.id, activity.predictionOptions.length, activity.checkOptions.length));
+  const [answer, setAnswer] = useState<number | null>(initial.answer);
+  const [checked, setChecked] = useState(initial.checked);
+  const task = taskFor(lesson);
+  const taskPassed = task.conditions.every((condition) => condition.test(demoState));
+  const correct = checked && answer === activity.checkAnswer;
+  const predicted = isDone || Boolean(savedEvidence?.predicted) || initial.prediction !== null;
+  const tried = isDone || Boolean(savedEvidence?.practiced) || taskPassed;
+  const answered = isDone || Boolean(savedEvidence?.instantCheckPassed) || correct;
+  const choose = (index: number) => {
+    setAnswer(index);
+    setChecked(false);
+    writeLessonDraft(lesson.id, { answer: index, checked: false });
+  };
+  const submit = () => {
+    setChecked(true);
+    writeLessonDraft(lesson.id, { checked: true });
+    if (predicted && taskPassed && answer === activity.checkAnswer) {
+      onEvidence({ instantCheckPassed: true });
+      onComplete();
+    }
+  };
+  return <>
     <section className="learning-block practice-check">
       <span className="step-label">04 · {locale === "zh" ? "用刚才的观察作答" : "Use what you observed"}</span>
       <h2>{locale === "zh" ? "即时检查 · 单选题" : "Instant check · single choice"}</h2>
       <h3>{read(activity.check, locale)}</h3>
       <p>{locale === "zh" ? "如果不确定，回到上面的演示，重新改变参数并观察说明文字。" : "If you are unsure, return to the demo, change the controls again, and read the explanation."}</p>
-      <div className="quiz-options instant-options">{activity.checkOptions.map((option, index) => <label className={answer === index ? "selected" : ""} key={option.zh}><input type="radio" name={`${lesson.id}-instant-check`} checked={answer === index} onChange={() => { setAnswer(index); setChecked(false); }} /><i aria-hidden="true" /><span>{read(option, locale)}</span></label>)}</div>
+      <div className="quiz-options instant-options">{activity.checkOptions.map((option, index) => <label className={answer === index ? "selected" : ""} key={option.zh}><input type="radio" name={`${lesson.id}-instant-check`} checked={answer === index} onChange={() => choose(index)} /><i aria-hidden="true" /><span>{read(option, locale)}</span></label>)}</div>
       <div className="completion-panel"><h3>{locale === "zh" ? "本章完成标准" : "Completion evidence"}</h3><p>{locale === "zh" ? "这里记录的是你完成了有效学习过程，不等同于永久掌握。章末还有一次简短小测。" : "This records a useful learning process, not permanent mastery. A short quiz follows."}</p><ul><li className={predicted ? "met" : ""}>{predicted && <Check />}{locale === "zh" ? "已经作出预测" : "Made a prediction"}</li><li className={tried ? "met" : ""}>{tried && <Check />}{locale === "zh" ? "当前布局达到全部目标条件" : "Matched every target condition"}</li><li className={answered ? "met" : ""}>{answered && <Check />}{locale === "zh" ? "已正确解释布局变化" : "Correctly explained the layout change"}</li></ul></div>
       <div className="check-actions"><button className="button" disabled={isDone || !predicted || !tried || answer === null} onClick={submit}>{isDone ? <Check weight="bold" /> : <Play />}{isDone ? (locale === "zh" ? "学习证据已完成" : "Learning evidence complete") : (locale === "zh" ? "检查即时题" : "Check answer")}</button></div>
       {!isDone && (!predicted || !tried || answer === null) && <p className="missing-requirement"><LockKey />{!predicted ? (locale === "zh" ? "还需先完成预测" : "Complete the prediction first") : !tried ? (locale === "zh" ? "还需在右侧教学板达到全部目标" : "Match every target in the board") : (locale === "zh" ? "还需选择一个答案" : "Choose an answer")}</p>}
@@ -788,7 +599,8 @@ function LearningLessonPage() {
   const stageLessons = lessons.filter((entry) => entry.stage === lesson.stage);
   const isStageEnd = stageLessons[stageLessons.length - 1]?.id === lesson.id;
   const stageUnlocked = stageLessons.every((entry) => chapterPassed.includes(entry.id));
-  const quiz = chapterQuizzes[lesson.id];
+  const quiz: Quiz | undefined = chapterQuizzes[lesson.id];
+  const activity = activityFor(lesson);
   const updateDemo = (state: DemoState) => {
     setDemoState(state);
     if (taskFor(lesson).conditions.every((condition) => condition.test(state))) {
@@ -804,18 +616,24 @@ function LearningLessonPage() {
         {lessons.map((entry) => <div className="lesson-nav-entry" key={entry.id}><Link className={entry.id === lesson.id ? "active" : ""} to={`/${locale}/lesson/${entry.id}`}><span>{String(entry.order).padStart(2, "0")}</span>{read(entry.title, locale)}{done.includes(entry.id) && <Check weight="bold" />}</Link></div>)}
       </nav>
     </aside>
-    <article className="lesson-content learning-content">
+    <section className="lesson-flow learning-intro">
       <div className="lesson-title"><div className="lesson-meta"><span className="tag">{read(stage.name, locale)}</span><span>{lesson.order} / {lessons.length} {read(ui.chapter, locale)}</span><span>{locale === "zh" ? "4 个概念 · 1 次操作 · 1 道检验" : "4 concepts · 1 demo · 1 check"}</span><span>{read(lesson.duration, locale)}</span></div><h1>{read(lesson.title, locale)}</h1><p className="lesson-goal"><strong>{read(ui.goalLabel, locale)}</strong>{read(lesson.goal, locale)}</p></div>
-      <SectionActivity key={currentId} lesson={lesson} locale={locale} isDone={sections.includes(currentId)} savedEvidence={evidence[lesson.id]} onComplete={() => { if (!sections.includes(currentId)) toggle(currentId); }} onEvidence={(patch) => recordEvidence(lesson.id, patch)} demoState={demoState} />
-      {sections.includes(currentId) ? <>
-        <QuizPanel quiz={quiz} locale={locale} passed={chapterPassed.includes(lesson.id)} onPass={() => passChapter(lesson.id)} title={locale === "zh" ? `${read(lesson.title, locale)}小测` : `${read(lesson.title, locale)} quiz`} intro={locale === "zh" ? "4 道基础选择题，全部答对后通过本章。答错会给出提示，不会直接公布答案。" : "Four basic questions. Answer all correctly to pass; wrong answers receive hints, not solutions."} />
-        {chapterPassed.includes(lesson.id) && <div className="after-quiz-action">{isStageEnd ? <Link className="button" to={`/${locale}/stage/${lesson.stage}/test`}>{stagePassed.includes(lesson.stage) ? (locale === "zh" ? "重新练习阶段测试" : "Practise the stage test") : stageUnlocked ? (locale === "zh" ? "开始阶段综合测试" : "Start the stage test") : (locale === "zh" ? "查看阶段要求" : "View stage requirements")}<ArrowRight /></Link> : nextHref && <Link className="button" to={nextHref}>{locale === "zh" ? "进入下一章" : "Next chapter"}<ArrowRight /></Link>}</div>}
-      </> : <section className="quiz-locked"><LockKey /><div><h2>{locale === "zh" ? "章末小测尚未开放" : "Chapter quiz locked"}</h2><p>{locale === "zh" ? "先完成预测、教学板目标和即时选择题。" : "Complete the prediction, board target and instant check first."}</p></div></section>}
-    </article>
+      <LessonIntro lesson={lesson} locale={locale} activity={activity} onEvidence={(patch) => recordEvidence(lesson.id, patch)} />
+    </section>
     <aside className="lesson-board">
       <div className="lesson-board-heading"><span>{locale === "zh" ? "同步教学板" : "Synchronized board"}</span><strong>{read(taskFor(lesson).title, locale)}</strong><p>{locale === "zh" ? "正文和教学板使用同一个任务。调整参数后，完成状态会立即同步。" : "The lesson and board share one task. Progress updates as you adjust the controls."}</p></div>
       <ConceptPlayground key={lesson.id} lesson={lesson} locale={locale} onChange={updateDemo} />
     </aside>
+    <section className="lesson-flow learning-body">
+      <LessonStudy lesson={lesson} locale={locale} />
+    </section>
+    <section className="lesson-flow learning-check">
+      <LessonCheck lesson={lesson} locale={locale} isDone={sections.includes(currentId)} savedEvidence={evidence[lesson.id]} onComplete={() => { if (!sections.includes(currentId)) toggle(currentId); }} onEvidence={(patch) => recordEvidence(lesson.id, patch)} demoState={demoState} />
+      {!quiz ? <section className="quiz-locked quiz-data-missing"><X /><div><h2>{locale === "zh" ? "测验数据缺失" : "Quiz data missing"}</h2><p>{locale === "zh" ? "本章题目暂时不可用，因此无法记录通过。刷新页面后重试；已通过的历史记录不会被删除。" : "This chapter's questions are unavailable, so a pass cannot be recorded. Refresh and retry; existing passes stay saved."}</p></div></section> : sections.includes(currentId) ? <>
+        <QuizPanel quiz={quiz} locale={locale} passed={chapterPassed.includes(lesson.id)} onPass={() => passChapter(lesson.id)} title={locale === "zh" ? `${read(lesson.title, locale)}小测` : `${read(lesson.title, locale)} quiz`} intro={locale === "zh" ? "4 道基础选择题，全部答对后通过本章。答错会给出提示，不会直接公布答案。" : "Four basic questions. Answer all correctly to pass; wrong answers receive hints, not solutions."} />
+        {chapterPassed.includes(lesson.id) && <div className="after-quiz-action">{isStageEnd ? <Link className="button" to={`/${locale}/stage/${lesson.stage}/test`}>{stagePassed.includes(lesson.stage) ? (locale === "zh" ? "重新练习阶段测试" : "Practise the stage test") : stageUnlocked ? (locale === "zh" ? "开始阶段综合测试" : "Start the stage test") : (locale === "zh" ? "查看阶段要求" : "View stage requirements")}<ArrowRight /></Link> : nextHref && <Link className="button" to={nextHref}>{locale === "zh" ? "进入下一章" : "Next chapter"}<ArrowRight /></Link>}</div>}
+      </> : <section className="quiz-locked"><LockKey /><div><h2>{locale === "zh" ? "章末小测尚未开放" : "Chapter quiz locked"}</h2><p>{locale === "zh" ? "先完成预测、教学板目标和即时选择题。" : "Complete the prediction, board target and instant check first."}</p></div></section>}
+    </section>
   </main></Shell>;
 }
 
@@ -824,12 +642,14 @@ function StageTestPage() {
   const locale = localeOf(raw);
   const stage = stages.find((entry) => entry.key === stageKey);
   const { chapterPassed, stagePassed, passStage } = useProgress();
+  const [answered, setAnswered] = useState(0);
   if (!stage) return <Shell><main className="page-main"><header className="page-header"><h1>{read(ui.notFound, locale)}</h1><Link className="button" to={`/${locale}/course`}>{read(ui.backToCourse, locale)}</Link></header></main></Shell>;
-  const quiz = stageQuizzes[stage.key];
-  const missing = quiz.lessonIds.filter((id) => !chapterPassed.includes(id));
+  const quiz = stageQuizzes[stage.key] as Quiz | undefined;
+  const total = quiz ? quiz.questions.length : 0;
+  const missing = quiz ? quiz.lessonIds.filter((id) => !chapterPassed.includes(id)) : [];
   return <Shell><main className="stage-test-page">
-    <header className="stage-test-hero"><Link className="back-link" to={`/${locale}/course`}><ArrowLeft />{locale === "zh" ? "课程路径" : "Course path"}</Link><span>{locale === "zh" ? "阶段综合测试" : "Stage test"}</span><h1>{read(stage.name, locale)}</h1><p>{locale === "zh" ? "约 10 道基础题，覆盖本阶段全部章节。错题会给出回顾方向，全部答对后过关。" : "About ten basic questions across the stage. Wrong answers get review cues; all must be correct to pass."}</p></header>
-    {missing.length ? <section className="stage-locked"><LockKey /><div><h2>{locale === "zh" ? "完成章末小测后开放" : "Complete the chapter quizzes first"}</h2><p>{locale === "zh" ? "还需要通过以下章节：" : "You still need to pass:"}</p><div>{missing.map((id) => { const entry = lessons.find((lesson) => lesson.id === id)!; return <Link to={`/${locale}/lesson/${id}`} key={id}>{read(entry.title, locale)}<ArrowRight /></Link>; })}</div></div></section> : <QuizPanel quiz={quiz} locale={locale} passed={stagePassed.includes(stage.key)} onPass={() => passStage(stage.key)} title={locale === "zh" ? `${read(stage.name, locale)}阶段综合测试` : `${read(stage.name, locale)} stage test`} intro={locale === "zh" ? "正确题会保留，提交后只需修改错题。" : "Correct answers stay complete; after submission, revise only the missed questions."} />}
+    <header className="stage-test-hero"><Link className="back-link" to={`/${locale}/course`}><ArrowLeft />{locale === "zh" ? "课程路径" : "Course path"}</Link><span>{locale === "zh" ? "阶段综合测试" : "Stage test"}</span><h1>{read(stage.name, locale)}</h1><p>{locale === "zh" ? "约 10 道基础题，覆盖本阶段全部章节。错题会给出回顾方向，全部答对后过关。" : "About ten basic questions across the stage. Wrong answers get review cues; all must be correct to pass."}</p><div className="stage-test-meta"><span>{locale === "zh" ? `${total} 道单选题` : `${total} single-choice questions`}</span><span>{locale === "zh" ? `已完成 ${answered} / ${total}` : `${answered} of ${total} answered`}</span><span>{locale === "zh" ? "全部答对即可通过" : "Answer every question correctly to pass"}</span></div></header>
+    {!quiz ? <section className="quiz-locked quiz-data-missing"><X /><div><h2>{locale === "zh" ? "测验数据缺失" : "Quiz data missing"}</h2><p>{locale === "zh" ? "本题组暂时不可用，因此无法记录通过。刷新页面后重试；已通过的历史记录不会被删除。" : "This question set is unavailable, so a pass cannot be recorded. Refresh and retry; existing passes stay saved."}</p></div></section> : missing.length ? <section className="stage-locked"><LockKey /><div><h2>{locale === "zh" ? "完成章末小测后开放" : "Complete the chapter quizzes first"}</h2><p>{locale === "zh" ? "还需要通过以下章节：" : "You still need to pass:"}</p><div>{missing.map((id) => { const entry = lessons.find((lesson) => lesson.id === id)!; return <Link to={`/${locale}/lesson/${id}`} key={id}>{read(entry.title, locale)}<ArrowRight /></Link>; })}</div></div></section> : <QuizPanel quiz={quiz} locale={locale} passed={stagePassed.includes(stage.key)} onPass={() => passStage(stage.key)} onProgress={setAnswered} title={locale === "zh" ? `${read(stage.name, locale)}阶段综合测试` : `${read(stage.name, locale)} stage test`} intro={locale === "zh" ? "正确题会保留，提交后只需修改错题。" : "Correct answers stay complete; after submission, revise only the missed questions."} />}
   </main></Shell>;
 }
 
@@ -876,7 +696,7 @@ function Footer({ locale }: { locale: Locale }) {
 }
 
 export default function App() {
-  const preferred = useMemo(() => (localStorage.getItem("layout-lab-locale") === "en" || navigator.language.startsWith("en") ? "en" : "zh"), []);
+  const preferred = useMemo(() => (readRaw("layout-lab-locale") === "en" || (navigator.language || "zh").startsWith("en") ? "en" : "zh"), []);
   return <Routes>
     <Route path="/" element={<Navigate to={`/${preferred}`} replace />} />
     <Route path="/:locale" element={<Home />} />

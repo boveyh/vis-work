@@ -5,3 +5,4 @@ vite.config.js
 vite.config.d.ts
 desktop.png
 mobile.png
+.qa-edge-*/
