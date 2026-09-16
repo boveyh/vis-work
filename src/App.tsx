@@ -328,12 +328,13 @@ function ChapterList({ locale, done, practiced, chapterPassed, stagePassed }: { 
     {stages.map((stage) => {
       const items = lessons.filter((item) => item.stage === stage.key);
       if (items.length === 0) return null;
+      const passed = items.filter((item) => chapterPassed.includes(item.id)).length;
       return <section className="chapter-group" key={stage.key}>
         <header className="chapter-group-head">
           <span className="stage-index">{String(stages.indexOf(stage) + 1).padStart(2, "0")}</span>
-          <h3>{read(stage.name, locale)}</h3>
-          <p>{read(stage.desc, locale)}</p>
-          <span className="stage-count">{locale === "zh" ? `${items.filter((item) => chapterPassed.includes(item.id)).length} / ${items.length} 章通过` : `${items.filter((item) => chapterPassed.includes(item.id)).length} / ${items.length} passed`}</span>
+          <div className="stage-head-main"><h3>{read(stage.name, locale)}</h3><p>{read(stage.desc, locale)}</p></div>
+          <span className="stage-count">{locale === "zh" ? `${passed} / ${items.length} 章通过` : `${passed} / ${items.length} passed`}</span>
+          <div className="stage-progress" aria-hidden="true"><i style={{ width: `${Math.round((passed / items.length) * 100)}%` }} /></div>
         </header>
         <ol className="chapter-rows">
           {items.map((lesson) => <li key={lesson.id}>
@@ -675,6 +676,36 @@ function AnchorButton({ target, label }: { target: string; label: string }) {
   }}>#</button>;
 }
 
+type OutlineStep = { id: string; label: LocalizedCopy };
+
+const outlineSteps = (includeQuiz: boolean): OutlineStep[] => [
+  { id: "step-prediction", label: t("预测", "Predict") },
+  { id: "step-concepts", label: t("原理", "Ideas") },
+  { id: "step-task", label: t("操作", "Task") },
+  { id: "step-check", label: t("即时题", "Check") },
+  ...(includeQuiz ? [{ id: "chapter-quiz", label: t("章末小测", "Quiz") }] : []),
+];
+
+/* Highlights the step whose section currently owns the viewport. */
+function useActiveStep(ids: string[], refresh: boolean) {
+  const key = ids.join("|");
+  const [active, setActive] = useState(ids[0] ?? "");
+  useEffect(() => {
+    const list = key.split("|").map((id) => document.getElementById(id)).filter((element): element is HTMLElement => Boolean(element));
+    if (!list.length) return;
+    /* The observer only reports changed entries, so keep the state of every section ourselves. */
+    const visible = new Map<string, boolean>();
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => visible.set(entry.target.id, entry.isIntersecting));
+      const current = list.filter((element) => visible.get(element.id)).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+      if (current[0]) setActive(current[0].id);
+    }, { rootMargin: "-96px 0px -55% 0px" });
+    list.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [key, refresh]);
+  return active;
+}
+
 function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson; locale: Locale; activity: LearningActivity; onEvidence: (patch: Partial<LessonEvidence>) => void }) {
   const [prediction, setPrediction] = useState<number | null>(() => readLessonDraft(lesson.id, activity.predictionOptions.length, activity.checkOptions.length).prediction);
   const choose = (index: number) => {
@@ -808,6 +839,14 @@ function LearningLessonPage() {
     toggle(currentId);
   }, [lesson, currentId, evidenceComplete, sections, toggle]);
   const quizOpen = sectionDone || evidenceComplete;
+  const steps = outlineSteps(quizOpen);
+  const activeStep = useActiveStep(steps.map((step) => step.id), quizOpen);
+  const stepDone: Record<string, boolean> = {
+    "step-prediction": sectionDone || Boolean(savedEvidence?.predicted),
+    "step-task": sectionDone || Boolean(savedEvidence?.practiced),
+    "step-check": sectionDone || Boolean(savedEvidence?.instantCheckPassed),
+    "chapter-quiz": Boolean(lesson) && chapterPassed.includes(lesson?.id ?? ""),
+  };
   const openGaps = [
     { id: "step-prediction", label: locale === "zh" ? "01 预测" : "01 Prediction", done: sectionDone || Boolean(savedEvidence?.predicted) },
     { id: "step-board", label: locale === "zh" ? "教学板目标" : "Board target", done: sectionDone || Boolean(savedEvidence?.practiced) },
@@ -839,11 +878,33 @@ function LearningLessonPage() {
     <aside className="lesson-nav">
       <Link className="back-link" to={`/${locale}`}><ArrowLeft />{locale === "zh" ? "学习路径" : "Learning path"}</Link>
       <div className="lesson-progress"><span>{read(ui.progress, locale)}</span><strong>{completedCount} / {totalCount}</strong></div>
-      <nav className="lesson-list">
-        {lessons.map((entry) => <div className="lesson-nav-entry" key={entry.id}><Link className={entry.id === lesson.id ? "active" : ""} to={`/${locale}/lesson/${entry.id}`}><span>{String(entry.order).padStart(2, "0")}</span>{read(entry.title, locale)}{done.includes(entry.id) && <Check weight="bold" />}</Link></div>)}
+      <nav className="lesson-list" aria-label={locale === "zh" ? "章节导航" : "Chapters"}>
+        {stages.map((stageEntry, stageIndex) => {
+          const stageItems = lessons.filter((entry) => entry.stage === stageEntry.key);
+          if (!stageItems.length) return null;
+          return <div className="lesson-list-group" key={stageEntry.key}>
+            <p><span>{String(stageIndex + 1).padStart(2, "0")}</span>{read(stageEntry.name, locale)}</p>
+            {stageItems.map((entry) => <div className="lesson-nav-entry" key={entry.id}><Link className={entry.id === lesson.id ? "active" : ""} to={`/${locale}/lesson/${entry.id}`}><span>{String(entry.order).padStart(2, "0")}</span>{read(entry.title, locale)}{done.includes(entry.id) && <Check weight="bold" />}</Link></div>)}
+          </div>;
+        })}
+      </nav>
+      <nav className="section-outline" aria-label={locale === "zh" ? "本页目录" : "On this page"}>
+        <p className="section-outline-title">{locale === "zh" ? "本页目录" : "On this page"}</p>
+        <ul className="section-nav">
+          {steps.map((step, index) => <li key={step.id}><button type="button" className={activeStep === step.id ? "active" : ""} aria-current={activeStep === step.id ? "true" : undefined} onClick={() => jumpTo(step.id)}><span>{String(index + 1).padStart(2, "0")}</span>{read(step.label, locale)}</button></li>)}
+        </ul>
       </nav>
     </aside>
     <section className="lesson-flow learning-intro">
+      <nav className="breadcrumb" aria-label={locale === "zh" ? "面包屑" : "Breadcrumb"}>
+        <Link to={`/${locale}`}>{locale === "zh" ? "首页" : "Home"}</Link>
+        <span className="breadcrumb-sep" aria-hidden="true">/</span>
+        <Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link>
+        <span className="breadcrumb-sep" aria-hidden="true">/</span>
+        <span>{read(stage.name, locale)}</span>
+        <span className="breadcrumb-sep" aria-hidden="true">/</span>
+        <span aria-current="page">{read(lesson.title, locale)}</span>
+      </nav>
       <div className="lesson-title"><div className="lesson-meta"><span className="tag">{read(stage.name, locale)}</span><span>{lesson.order} / {lessons.length} {read(ui.chapter, locale)}</span><span>{locale === "zh" ? "4 个概念 · 1 次操作 · 1 道检验" : "4 concepts · 1 demo · 1 check"}</span><span>{read(lesson.duration, locale)}</span></div><h1>{read(lesson.title, locale)}</h1><p className="lesson-goal"><strong>{read(ui.goalLabel, locale)}</strong>{read(lesson.goal, locale)}</p></div>
       <LessonIntro lesson={lesson} locale={locale} activity={activity} onEvidence={(patch) => recordEvidence(lesson.id, patch)} />
     </section>
@@ -868,6 +929,9 @@ function LearningLessonPage() {
       }}
     />
     <aside className="lesson-board" id="step-board" tabIndex={-1}>
+      <div className="step-track" aria-label={locale === "zh" ? "本章步骤" : "Lesson steps"}>
+        {steps.map((step, index) => <button type="button" key={step.id} className={`${activeStep === step.id ? "is-active" : ""}${stepDone[step.id] ? " is-done" : ""}`} aria-current={activeStep === step.id ? "step" : undefined} onClick={() => jumpTo(step.id)}><span>{String(index + 1).padStart(2, "0")}</span>{read(step.label, locale)}</button>)}
+      </div>
       <div className="lesson-board-heading"><span>{locale === "zh" ? "同步教学板" : "Synchronized board"}</span><strong>{read(taskFor(lesson).title, locale)}</strong><p>{locale === "zh" ? "正文和教学板使用同一个任务。调整参数后，完成状态会立即同步。" : "The lesson and board share one task. Progress updates as you adjust the controls."}</p></div>
       <ConceptPlayground key={lesson.id} lesson={lesson} locale={locale} onChange={updateDemo} />
     </aside>
@@ -880,6 +944,14 @@ function LearningLessonPage() {
         <QuizPanel quiz={quiz} locale={locale} passed={chapterPassed.includes(lesson.id)} onPass={() => passChapter(lesson.id)} title={locale === "zh" ? `${read(lesson.title, locale)}小测` : `${read(lesson.title, locale)} quiz`} intro={locale === "zh" ? "4 道基础选择题，全部答对后通过本章。答错会给出提示，不会直接公布答案。" : "Four basic questions. Answer all correctly to pass; wrong answers receive hints, not solutions."} />
         {chapterPassed.includes(lesson.id) && <div className="after-quiz-action">{isStageEnd ? <Link className="button" to={`/${locale}/stage/${lesson.stage}/test`}>{stagePassed.includes(lesson.stage) ? (locale === "zh" ? "重新练习阶段测试" : "Practise the stage test") : stageUnlocked ? (locale === "zh" ? "开始阶段综合测试" : "Start the stage test") : (locale === "zh" ? "查看阶段要求" : "View stage requirements")}<ArrowRight /></Link> : nextHref && <Link className="button" to={nextHref}>{locale === "zh" ? "进入下一章" : "Next chapter"}<ArrowRight /></Link>}</div>}
       </> : <section className="quiz-locked"><LockKey /><div><h2>{locale === "zh" ? "章末小测尚未开放" : "Chapter quiz locked"}</h2><p>{locale === "zh" ? `还剩 ${openGaps.length} 步就能开始，点一下直接跳过去：` : `${openGaps.length} step(s) left. Jump straight to them:`}</p><div className="locked-steps">{openGaps.map((gap) => <button className="step-jump" key={gap.id} onClick={() => jumpTo(gap.id)}>{gap.label}<ArrowRight /></button>)}</div></div></section>}
+      <nav className="lesson-pager" aria-label={locale === "zh" ? "上一章与下一章" : "Previous and next chapter"}>
+        {lessons[lessonIndex - 1]
+          ? <Link className="pager-link prev" to={`/${locale}/lesson/${lessons[lessonIndex - 1].id}`}><ArrowLeft /><span><small>{locale === "zh" ? "上一章" : "Previous"}</small><strong>{read(lessons[lessonIndex - 1].title, locale)}</strong></span></Link>
+          : <span />}
+        {lessons[lessonIndex + 1]
+          ? <Link className="pager-link next" to={`/${locale}/lesson/${lessons[lessonIndex + 1].id}`}><span><small>{locale === "zh" ? "下一章" : "Next"}</small><strong>{read(lessons[lessonIndex + 1].title, locale)}</strong></span><ArrowRight /></Link>
+          : <span />}
+      </nav>
     </section>
   </main></Shell>;
 }
@@ -935,10 +1007,29 @@ function About() {
 }
 
 function Footer({ locale }: { locale: Locale }) {
+  const zh = locale === "zh";
   return <footer>
-    <strong>Layout Lab</strong>
-    <p>{locale === "zh" ? "用实验理解前端布局。" : "Understand front-end layout through experiments."}</p>
-    <a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a>
+    <div className="footer-brand">
+      <strong>Layout Lab</strong>
+      <p>{zh ? "用实验理解前端布局。" : "Understand front-end layout through experiments."}</p>
+    </div>
+    <div className="footer-col">
+      <h2>{zh ? "课程" : "Course"}</h2>
+      <Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link>
+      <Link to={`/${locale}/questions`}>{read(ui.navQuestions, locale)}</Link>
+      <Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link>
+    </div>
+    <div className="footer-col">
+      <h2>{zh ? "延伸阅读" : "References"}</h2>
+      <a href="https://developer.mozilla.org/docs/Web/CSS" target="_blank" rel="noreferrer">MDN CSS</a>
+      <a href="https://web.dev/learn/css" target="_blank" rel="noreferrer">web.dev Learn CSS</a>
+    </div>
+    <div className="footer-col">
+      <h2>{zh ? "关于本站" : "About this site"}</h2>
+      <span>{zh ? "纯静态 · Hash 路由" : "Static site · hash routing"}</span>
+      <span>{zh ? "进度只存在本机浏览器" : "Progress stays in this browser"}</span>
+      <Link to={`/${locale}/about`}>{read(ui.navAbout, locale)}</Link>
+    </div>
   </footer>;
 }
 
