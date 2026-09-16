@@ -161,6 +161,13 @@ function Shell({ children }: { children: ReactNode }) {
   };
 
   return <>
+    <button type="button" className="skip-link" onClick={() => {
+      const main = document.querySelector("main");
+      if (!main) return;
+      main.setAttribute("tabindex", "-1");
+      main.scrollIntoView({ block: "start" });
+      (main as HTMLElement).focus({ preventScroll: true });
+    }}>{locale === "zh" ? "跳到主要内容" : "Skip to main content"}</button>
     <header className="site-nav">
       <Link className="brand" to={`/${locale}`} aria-label="Layout Lab home"><span className="brand-mark"><i /><i /><i /></span>Layout Lab</Link>
       <nav aria-label={locale === "zh" ? "主导航" : "Main navigation"}>
@@ -658,6 +665,16 @@ function QuizPanel({ quiz, locale, passed, onPass, title, intro, onProgress }: {
   </section>;
 }
 
+/* Hash routing owns the URL hash, so section jumps are buttons that scroll and move focus. */
+function AnchorButton({ target, label }: { target: string; label: string }) {
+  return <button type="button" className="heading-anchor" title={label} aria-label={label} onClick={() => {
+    const element = document.getElementById(target);
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+    element.focus({ preventScroll: true });
+  }}>#</button>;
+}
+
 function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson; locale: Locale; activity: LearningActivity; onEvidence: (patch: Partial<LessonEvidence>) => void }) {
   const [prediction, setPrediction] = useState<number | null>(() => readLessonDraft(lesson.id, activity.predictionOptions.length, activity.checkOptions.length).prediction);
   const choose = (index: number) => {
@@ -671,9 +688,9 @@ function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson;
       <h2>{read(lesson.goal, locale)}</h2>
       <p>{read(lesson.summary, locale)} {locale === "zh" ? "下面四步先建立判断，再用同一个演示验证，最后把观察结果用于练习。" : "The four steps below build the idea, verify it in one demo, and reuse the observation in a short exercise."}</p>
     </section>
-    <section className="learning-block prediction-block" id="step-prediction">
+    <section className="learning-block prediction-block" id="step-prediction" tabIndex={-1}>
       <span className="step-label">01 · {locale === "zh" ? "建立初始判断" : "Make an initial judgement"}</span>
-      <h3>{locale === "zh" ? "先预测，再读解释" : "Predict before reading"}</h3>
+      <h3>{locale === "zh" ? "先预测，再读解释" : "Predict before reading"}<AnchorButton target="step-prediction" label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3>
       <p>{read(activity.prediction, locale)}</p>
       <div className="quiz-options instant-options">{activity.predictionOptions.map((option, index) => <label className={prediction === index ? "selected" : ""} key={option.zh}><input type="radio" name={`${lesson.id}-prediction`} checked={prediction === index} onChange={() => choose(index)} /><i aria-hidden="true" /><span>{read(option, locale)}</span></label>)}</div>
       {prediction !== null && <p className={prediction === activity.predictionAnswer ? "feedback correct" : "feedback"}>{prediction === activity.predictionAnswer ? (locale === "zh" ? "判断正确。继续读下面四步，弄清为什么。" : "Correct. Read the four steps below to understand why.") : (locale === "zh" ? "这个判断暂时不对。不要背答案，读完下面四步后再到演示里验证。" : "That judgement is not correct yet. Read the four steps, then verify it in the demo.")}</p>}
@@ -685,15 +702,15 @@ function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson;
 function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
   const task = taskFor(lesson);
   return <>
-    <section className="concept-sequence">
-      <div className="sequence-heading"><span className="step-label">02 · {locale === "zh" ? "把原理连起来" : "Connect the ideas"}</span><h2>{locale === "zh" ? "从结构到规则，按顺序理解" : "Follow the reasoning from structure to rule"}</h2><p>{locale === "zh" ? "每一步只回答一个问题。后一步会使用前一步的结论。" : "Each step answers one question and uses the conclusion before it."}</p></div>
+    <section className="concept-sequence" id="step-concepts" tabIndex={-1}>
+      <div className="sequence-heading"><span className="step-label">02 · {locale === "zh" ? "把原理连起来" : "Connect the ideas"}</span><h2>{locale === "zh" ? "从结构到规则，按顺序理解" : "Follow the reasoning from structure to rule"}<AnchorButton target="step-concepts" label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h2><p>{locale === "zh" ? "每一步只回答一个问题。后一步会使用前一步的结论。" : "Each step answers one question and uses the conclusion before it."}</p></div>
       {lesson.theory.map((block, index) => {
         const point = keyPointFor(lesson, index);
-        return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{read(block.heading, locale)}</h3><p>{read(block.body, locale)}</p><div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div></div></section>;
+        return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3 id={`concept-${index + 1}`} tabIndex={-1}>{read(block.heading, locale)}<AnchorButton target={`concept-${index + 1}`} label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3><p>{read(block.body, locale)}</p><div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div></div></section>;
       })}
     </section>
     <section className="learning-block mistake-block"><h3>{read(ui.mistakes, locale)}</h3><ul>{lesson.mistakes.map((mistake) => <li key={mistake.zh}>{read(mistake, locale)}</li>)}</ul></section>
-    <section className="demo-lesson-block demo-instructions">
+    <section className="demo-lesson-block demo-instructions" id="step-task" tabIndex={-1}>
       <div className="demo-brief"><span className="step-label">03 · {locale === "zh" ? "带着任务操作" : "Operate with a task"}</span><h2>{read(task.title, locale)}</h2><p>{read(task.brief, locale)}</p><div className="task-levels"><span><b>1</b>{locale === "zh" ? "跟做：对照目标调整参数" : "Follow: match the target"}</span><span><b>2</b>{locale === "zh" ? "排错：根据未满足条件修正" : "Debug: fix unmet conditions"}</span><span><b>3</b>{locale === "zh" ? "迁移：用观察结果回答下一题" : "Transfer: answer from the result"}</span></div><strong>{locale === "zh" ? "不要靠试遍所有选项。每次只改一个参数，说清它改变的是方向、分布、尺寸还是间距。" : "Do not brute-force every option. Change one control at a time and name whether it affects direction, distribution, size or spacing."}</strong></div>
       <div className="board-pointer"><ArrowRight />{locale === "zh" ? "在右侧同步教学板中完成操作" : "Complete the task in the synchronized board"}</div>
     </section>
@@ -727,9 +744,9 @@ function LessonCheck({ lesson, locale, isDone, savedEvidence, onComplete, onEvid
     }
   };
   return <>
-    <section className="learning-block practice-check" id="step-check">
+    <section className="learning-block practice-check" id="step-check" tabIndex={-1}>
       <span className="step-label">04 · {locale === "zh" ? "用刚才的观察作答" : "Use what you observed"}</span>
-      <h2>{locale === "zh" ? "即时检查 · 单选题" : "Instant check · single choice"}</h2>
+      <h2>{locale === "zh" ? "即时检查 · 单选题" : "Instant check · single choice"}<AnchorButton target="step-check" label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h2>
       <h3>{read(activity.check, locale)}</h3>
       <p>{locale === "zh" ? "如果不确定，回到上面的演示，重新改变参数并观察说明文字。" : "If you are unsure, return to the demo, change the controls again, and read the explanation."}</p>
       <div className="quiz-options instant-options">{activity.checkOptions.map((option, index) => <label className={answer === index ? "selected" : ""} key={option.zh}><input type="radio" name={`${lesson.id}-instant-check`} checked={answer === index} onChange={() => choose(index)} /><i aria-hidden="true" /><span>{read(option, locale)}</span></label>)}</div>
@@ -796,7 +813,12 @@ function LearningLessonPage() {
     { id: "step-board", label: locale === "zh" ? "教学板目标" : "Board target", done: sectionDone || Boolean(savedEvidence?.practiced) },
     { id: "step-check", label: locale === "zh" ? "即时题" : "Instant check", done: sectionDone || Boolean(savedEvidence?.instantCheckPassed) },
   ].filter((gap) => !gap.done);
-  const jumpTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const jumpTo = (id: string) => {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    element.focus({ preventScroll: true });
+  };
   if (!lesson) return <Shell><main className="page-main"><header className="page-header"><h1>{read(ui.notFound, locale)}</h1><Link className="button" to={`/${locale}/course`}>{read(ui.backToCourse, locale)}</Link></header></main></Shell>;
   const lessonIndex = lessons.indexOf(lesson);
   const nextHref = lessons[lessonIndex + 1] ? `/${locale}/lesson/${lessons[lessonIndex + 1].id}` : undefined;
@@ -845,7 +867,7 @@ function LearningLessonPage() {
         if (event.key === "ArrowRight") { event.preventDefault(); applyBoardWidth(boardWidthInUse - 16); }
       }}
     />
-    <aside className="lesson-board" id="step-board">
+    <aside className="lesson-board" id="step-board" tabIndex={-1}>
       <div className="lesson-board-heading"><span>{locale === "zh" ? "同步教学板" : "Synchronized board"}</span><strong>{read(taskFor(lesson).title, locale)}</strong><p>{locale === "zh" ? "正文和教学板使用同一个任务。调整参数后，完成状态会立即同步。" : "The lesson and board share one task. Progress updates as you adjust the controls."}</p></div>
       <ConceptPlayground key={lesson.id} lesson={lesson} locale={locale} onChange={updateDemo} />
     </aside>
