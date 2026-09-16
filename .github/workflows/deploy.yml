@@ -35,6 +35,10 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          # 尝试用工作流令牌直接开启 Pages（仓库公开 + pages: write 权限即可），
+          # 这样无需先手动去 Settings → Pages 选 GitHub Actions。
+          enablement: true
 
       - name: Upload build output
         uses: actions/upload-pages-artifact@v3
