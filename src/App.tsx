@@ -253,30 +253,58 @@ function demoExplanation(lesson: Lesson, state: DemoState, locale: Locale) {
   return zh ? `四个语义区域保持正常文档流，容器内侧保留 ${state.padding}px 安全边距。` : `Four semantic regions stay in normal flow with a ${state.padding}px safe inset.`;
 }
 
+/* The CSS a given set of parameters produces, shared by the CSS panel and its diff. */
+function demoCss(lesson: Lesson, state: DemoState) {
+  if (lesson.demo === "navbar") return `display: flex;\nflex-direction: ${state.direction};\njustify-content: ${state.justify};\ngap: ${state.gap}px;`;
+  if (lesson.demo === "dashboard") return `display: grid;\ngrid-template-columns: repeat(${state.columns}, minmax(0, 1fr));\ngap: ${state.gap}px;`;
+  if (lesson.demo === "split") return `display: grid;\ngrid-template-columns: ${state.columns === 1 ? "1fr" : "2fr 1fr"};\ngap: ${state.gap}px;`;
+  if (lesson.demo === "landing") return `display: grid;\ngrid-template-columns: repeat(auto-fit, minmax(150px, 1fr));\ngap: ${state.gap}px;\npadding: ${state.padding}px;`;
+  if (lesson.demo === "project") return `display: grid;\ngrid-template-columns: repeat(${state.columns}, minmax(0, 1fr));\ngrid-template-areas: "head head head" "main main side" "foot foot foot";\ngap: ${state.gap}px;\npadding: ${state.padding}px;`;
+  if (lesson.demo === "overlay") return `position: absolute;\ninset: ${state.padding}px;\nz-index: 3;`;
+  if (lesson.demo === "card") return `box-sizing: border-box;\nwidth: 280px;\npadding: ${state.padding}px;`;
+  return `max-width: 720px;\nmargin-inline: auto;\npadding: ${state.padding}px;`;
+}
+
 function ConceptPlayground({ lesson, locale, onChange }: { lesson: Lesson; locale: Locale; onChange?: (state: DemoState) => void }) {
   const [state, setState] = useState(initialDemo);
   const [copied, setCopied] = useState(false);
+  const [compare, setCompare] = useState<"split" | "overlay">("split");
+  const [split, setSplit] = useState(50);
   const zh = locale === "zh";
   const task = taskFor(lesson);
   const passed = task.conditions.every((condition) => condition.test(state));
   const firstMissing = task.conditions.find((condition) => !condition.test(state));
-  const generated = useMemo(() => {
-    if (lesson.demo === "navbar") return `display: flex;\nflex-direction: ${state.direction};\njustify-content: ${state.justify};\ngap: ${state.gap}px;`;
-    if (lesson.demo === "dashboard") return `display: grid;\ngrid-template-columns: repeat(${state.columns}, minmax(0, 1fr));\ngap: ${state.gap}px;`;
-    if (lesson.demo === "split") return `display: grid;\ngrid-template-columns: ${state.columns === 1 ? "1fr" : "2fr 1fr"};\ngap: ${state.gap}px;`;
-    if (lesson.demo === "landing") return `display: grid;\ngrid-template-columns: repeat(auto-fit, minmax(150px, 1fr));\ngap: ${state.gap}px;\npadding: ${state.padding}px;`;
-    if (lesson.demo === "project") return `display: grid;\ngrid-template-columns: repeat(${state.columns}, minmax(0, 1fr));\ngrid-template-areas: "head head head" "main main side" "foot foot foot";\ngap: ${state.gap}px;\npadding: ${state.padding}px;`;
-    if (lesson.demo === "overlay") return `position: absolute;\ninset: ${state.padding}px;\nz-index: 3;`;
-    if (lesson.demo === "card") return `box-sizing: border-box;\nwidth: 280px;\npadding: ${state.padding}px;`;
-    return `max-width: 720px;\nmargin-inline: auto;\npadding: ${state.padding}px;`;
-  }, [lesson.demo, state]);
+  const generated = useMemo(() => demoCss(lesson, state), [lesson, state]);
+  /* Real before/after diff: the starting parameters against the current ones. */
+  const cssDiff = useMemo(() => {
+    const before = demoCss(lesson, initialDemo).split("\n");
+    const after = demoCss(lesson, state).split("\n");
+    return { removed: before.filter((line) => !after.includes(line)), added: after.filter((line) => !before.includes(line)) };
+  }, [lesson, state]);
   const copy = async () => {
     try { await navigator.clipboard.writeText(generated); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { setCopied(false); }
   };
   const update = (next: DemoState) => { setState(next); onChange?.(next); };
+  const panes = <div className="compare-board"><div className="compare-pane"><span>{zh ? "目标效果" : "Target"}</span><div className={`preview-stage board-${lesson.demo}`}><Diagram kind={lesson.demo} state={task.target} /></div></div><div className="compare-pane"><span>{zh ? "当前效果" : "Current"}</span><div className={`preview-stage board-${lesson.demo}`}><Diagram kind={lesson.demo} state={state} /></div></div></div>;
   return <div className="playground concept-playground">
     <div className="preview-head"><span>{zh ? "目标与当前结果" : "Target and current result"}</span><span className="viewport-label">{read(lesson.title, locale)}</span></div>
-    <div className="compare-board"><div className="compare-pane"><span>{zh ? "目标效果" : "Target"}</span><div className={`preview-stage board-${lesson.demo}`}><Diagram kind={lesson.demo} state={task.target} /></div></div><div className="compare-pane"><span>{zh ? "当前效果" : "Current"}</span><div className={`preview-stage board-${lesson.demo}`}><Diagram kind={lesson.demo} state={state} /></div></div></div>
+    <figure className="board-figure">
+      <div className="compare-head">
+        <span>{zh ? "对比方式" : "Compare"}</span>
+        <div className="compare-switch" role="group" aria-label={zh ? "对比方式" : "Comparison mode"}>
+          <button type="button" className={compare === "split" ? "is-active" : ""} aria-pressed={compare === "split"} onClick={() => setCompare("split")}>{zh ? "并排" : "Side by side"}</button>
+          <button type="button" className={compare === "overlay" ? "is-active" : ""} aria-pressed={compare === "overlay"} onClick={() => setCompare("overlay")}>{zh ? "叠加拖动" : "Overlay"}</button>
+        </div>
+      </div>
+      {compare === "split" ? panes : <div className="compare-slider">
+        <div className={`preview-stage board-${lesson.demo} compare-layer`}><Diagram kind={lesson.demo} state={state} /></div>
+        <div className={`preview-stage board-${lesson.demo} compare-layer is-overlay`} style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}><Diagram kind={lesson.demo} state={task.target} /></div>
+        <span className="compare-tag left">{zh ? "目标" : "Target"}</span>
+        <span className="compare-tag right">{zh ? "当前" : "Current"}</span>
+        <input type="range" min={0} max={100} value={split} aria-label={zh ? "拖动比较目标与当前效果" : "Drag to compare target and current"} onChange={(event) => setSplit(Number(event.target.value))} />
+      </div>}
+      <figcaption aria-live="polite">{demoExplanation(lesson, state, locale)}</figcaption>
+    </figure>
     <div className="controls">
       {lesson.controls.includes("direction") && <label>flex-direction<select value={state.direction} onChange={(e) => update({ ...state, direction: e.target.value })}><option>row</option><option>column</option><option>row-reverse</option><option>column-reverse</option></select></label>}
       {lesson.controls.includes("justify") && <label>justify-content<select value={state.justify} onChange={(e) => update({ ...state, justify: e.target.value })}><option>center</option><option>flex-start</option><option>flex-end</option><option>space-between</option><option>space-around</option></select></label>}
@@ -284,9 +312,15 @@ function ConceptPlayground({ lesson, locale, onChange }: { lesson: Lesson; local
       {lesson.controls.includes("gap") && <label>gap<input type="range" min="0" max="48" value={state.gap} onChange={(e) => update({ ...state, gap: Number(e.target.value) })} /><output>{state.gap}px</output></label>}
       {lesson.controls.includes("padding") && <label>{lesson.demo === "overlay" ? "inset" : "padding"}<input type="range" min="0" max="56" value={state.padding} onChange={(e) => update({ ...state, padding: Number(e.target.value) })} /><output>{state.padding}px</output></label>}
     </div>
-    <div className={`task-result ${passed ? "passed" : ""}`} aria-live="polite"><strong>{passed ? (zh ? "目标已达到" : "Target reached") : (zh ? "还差一步" : "One step remains")}</strong><p>{passed ? (zh ? "当前布局满足全部条件，可以进入解释题。" : "The current layout meets every condition. Continue to the explanation check.") : `${zh ? "当前未满足：" : "Still missing: "}${read(firstMissing?.label ?? task.conditions[0].label, locale)}`}</p><ul>{task.conditions.map((condition) => <li className={condition.test(state) ? "met" : ""} key={condition.label.zh}>{condition.test(state) && <Check />}{read(condition.label, locale)}</li>)}</ul><details><summary>{zh ? "需要提示" : "Need a hint"}</summary><p>{read(task.hint, locale)}</p></details></div>
-    <p className="change-explanation" aria-live="polite">{demoExplanation(lesson, state, locale)}</p>
-    <details className="generated-details"><summary>{zh ? "查看对应 CSS" : "View the CSS"}</summary><pre className="generated"><code>{generated}</code></pre></details>
+    <div className={`task-result ${passed ? "passed" : ""}`} aria-live="polite"><strong>{passed ? (zh ? "目标已达到" : "Target reached") : (zh ? "还差一步" : "One step remains")}</strong><p>{passed ? (zh ? "当前布局满足全部条件，可以进入解释题。" : "The current layout meets every condition. Continue to the explanation check.") : `${zh ? "当前未满足：" : "Still missing: "}${read(firstMissing?.label ?? task.conditions[0].label, locale)}`}</p><ul>{task.conditions.map((condition) => <li className={condition.test(state) ? "met" : ""} key={condition.label.zh}>{condition.test(state) && <Check />}{read(condition.label, locale)}</li>)}</ul><details className="callout" data-tone="tip"><summary>{zh ? "需要提示" : "Need a hint"}</summary><p>{read(task.hint, locale)}</p></details></div>
+    <details className="generated-details"><summary>{zh ? "查看对应 CSS 与本次变化" : "View the CSS and what changed"}</summary>
+      <pre className="generated"><code>{generated}</code></pre>
+      <div className="css-diff">
+        <p className="css-diff-title">{cssDiff.removed.length || cssDiff.added.length ? (zh ? "相对初始参数的变化" : "Changes from the starting values") : (zh ? "还没有改动参数" : "No parameters changed yet")}</p>
+        {cssDiff.removed.map((line) => <code className="diff-del" key={`-${line}`}>- {line}</code>)}
+        {cssDiff.added.map((line) => <code className="diff-add" key={`+${line}`}>+ {line}</code>)}
+      </div>
+    </details>
     <div className="control-actions"><button className="text-button" onClick={() => update(initialDemo)}>{read(ui.reset, locale)}</button><button className="text-button" onClick={copy}><Copy />{copied ? read(ui.copied, locale) : read(ui.copy, locale)}</button></div>
   </div>;
 }
@@ -304,6 +338,12 @@ function Home() {
           <p>{zh ? "前端布局学习路径" : "Front-end layout path"}</p>
           <h1>{zh ? "接着上次的位置继续" : "Continue where you left off"}</h1>
           <span>{zh ? `已完成 ${completedCount} / ${totalCount} 章` : `${completedCount} of ${totalCount} lessons complete`}</span>
+          <ul className="course-stats">
+            <li><strong>{lessons.length}</strong><span>{zh ? "章" : "chapters"}</span></li>
+            <li><strong>{stages.length}</strong><span>{zh ? "阶段" : "stages"}</span></li>
+            <li><strong>{totalQuestionCount}</strong><span>{zh ? "道题" : "questions"}</span></li>
+            <li><strong>{zh ? "中 / EN" : "ZH / EN"}</strong><span>{zh ? "双语同源" : "shared IDs"}</span></li>
+          </ul>
         </div>
         <div className="next-task">
           <span>{completedCount ? (zh ? "继续学习" : "Continue") : (zh ? "从这里开始" : "Start here")}</span>
@@ -676,6 +716,14 @@ function AnchorButton({ target, label }: { target: string; label: string }) {
   }}>#</button>;
 }
 
+const totalQuestionCount = [...Object.values(chapterQuizzes), ...Object.values(stageQuizzes)].reduce((sum, quiz) => sum + quiz.questions.length, 0);
+
+const toolChoices = (): { need: LocalizedCopy; tool: string; reason: LocalizedCopy }[] => [
+  { need: t("一行或一列排列", "A single row or column"), tool: "Flex", reason: t("一维关系，主轴决定对齐方式。", "One dimension: the main axis decides alignment.") },
+  { need: t("行列都要控制", "Rows and columns together"), tool: "Grid", reason: t("轨道与网格线同时管理，适合卡片墙。", "Tracks and grid lines together: good for card walls.") },
+  { need: t("覆盖在另一个元素之上", "Overlaying another element"), tool: "position + z-index", reason: t("需要明确的定位参照和层叠顺序。", "Needs a positioning context and a stacking order.") },
+];
+
 type OutlineStep = { id: string; label: LocalizedCopy };
 
 const outlineSteps = (includeQuiz: boolean): OutlineStep[] => [
@@ -732,6 +780,7 @@ function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson;
 /* Steps 02 and 03: reading order and the hands-on brief that points at the synchronized board. */
 function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
   const task = taskFor(lesson);
+  const zh = locale === "zh";
   return <>
     <section className="concept-sequence" id="step-concepts" tabIndex={-1}>
       <div className="sequence-heading"><span className="step-label">02 · {locale === "zh" ? "把原理连起来" : "Connect the ideas"}</span><h2>{locale === "zh" ? "从结构到规则，按顺序理解" : "Follow the reasoning from structure to rule"}<AnchorButton target="step-concepts" label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h2><p>{locale === "zh" ? "每一步只回答一个问题。后一步会使用前一步的结论。" : "Each step answers one question and uses the conclusion before it."}</p></div>
@@ -740,7 +789,19 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
         return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3 id={`concept-${index + 1}`} tabIndex={-1}>{read(block.heading, locale)}<AnchorButton target={`concept-${index + 1}`} label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3><p>{read(block.body, locale)}</p><div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div></div></section>;
       })}
     </section>
-    <section className="learning-block mistake-block"><h3>{read(ui.mistakes, locale)}</h3><ul>{lesson.mistakes.map((mistake) => <li key={mistake.zh}>{read(mistake, locale)}</li>)}</ul></section>
+    <section className="learning-block mistake-block callout" data-tone="warn"><h3 className="callout-title"><Lightbulb weight="fill" />{read(ui.mistakes, locale)}</h3><ul>{lesson.mistakes.map((mistake) => <li key={mistake.zh}>{read(mistake, locale)}</li>)}</ul></section>
+    <section className="learning-block property-table" id="keypoints" tabIndex={-1}>
+      <h2>{zh ? "属性速查" : "Property reference"}<AnchorButton target="keypoints" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <table>
+        <thead><tr><th scope="col">{zh ? "属性 / 写法" : "Property"}</th><th scope="col">{zh ? "作用" : "What it does"}</th></tr></thead>
+        <tbody>{lesson.keyPoints.map((point) => <tr key={point.term}><td><code>{point.term}</code></td><td>{read(point.desc, locale)}</td></tr>)}</tbody>
+      </table>
+      {lesson.id === "patterns" && <table className="tool-choice">
+        <caption>{zh ? "怎么选布局工具" : "Choosing a layout tool"}</caption>
+        <thead><tr><th scope="col">{zh ? "需求" : "Need"}</th><th scope="col">{zh ? "推荐" : "Tool"}</th><th scope="col">{zh ? "原因" : "Why"}</th></tr></thead>
+        <tbody>{toolChoices().map((row) => <tr key={row.tool}><td>{read(row.need, locale)}</td><td><code>{row.tool}</code></td><td>{read(row.reason, locale)}</td></tr>)}</tbody>
+      </table>}
+    </section>
     <section className="demo-lesson-block demo-instructions" id="step-task" tabIndex={-1}>
       <div className="demo-brief"><span className="step-label">03 · {locale === "zh" ? "带着任务操作" : "Operate with a task"}</span><h2>{read(task.title, locale)}</h2><p>{read(task.brief, locale)}</p><div className="task-levels"><span><b>1</b>{locale === "zh" ? "跟做：对照目标调整参数" : "Follow: match the target"}</span><span><b>2</b>{locale === "zh" ? "排错：根据未满足条件修正" : "Debug: fix unmet conditions"}</span><span><b>3</b>{locale === "zh" ? "迁移：用观察结果回答下一题" : "Transfer: answer from the result"}</span></div><strong>{locale === "zh" ? "不要靠试遍所有选项。每次只改一个参数，说清它改变的是方向、分布、尺寸还是间距。" : "Do not brute-force every option. Change one control at a time and name whether it affects direction, distribution, size or spacing."}</strong></div>
       <div className="board-pointer"><ArrowRight />{locale === "zh" ? "在右侧同步教学板中完成操作" : "Complete the task in the synchronized board"}</div>
@@ -781,7 +842,7 @@ function LessonCheck({ lesson, locale, isDone, savedEvidence, onComplete, onEvid
       <h3>{read(activity.check, locale)}</h3>
       <p>{locale === "zh" ? "如果不确定，回到上面的演示，重新改变参数并观察说明文字。" : "If you are unsure, return to the demo, change the controls again, and read the explanation."}</p>
       <div className="quiz-options instant-options">{activity.checkOptions.map((option, index) => <label className={answer === index ? "selected" : ""} key={option.zh}><input type="radio" name={`${lesson.id}-instant-check`} checked={answer === index} onChange={() => choose(index)} /><i aria-hidden="true" /><span>{read(option, locale)}</span></label>)}</div>
-      <div className="completion-panel"><h3>{locale === "zh" ? "本章完成标准" : "Completion evidence"}</h3><p>{locale === "zh" ? "这里记录的是你完成了有效学习过程，不等同于永久掌握。章末还有一次简短小测。" : "This records a useful learning process, not permanent mastery. A short quiz follows."}</p><ul><li className={predicted ? "met" : ""}>{predicted && <Check />}{locale === "zh" ? "已经作出预测" : "Made a prediction"}</li><li className={tried ? "met" : ""}>{tried && <Check />}{locale === "zh" ? "当前布局达到全部目标条件" : "Matched every target condition"}</li><li className={answered ? "met" : ""}>{answered && <Check />}{locale === "zh" ? "已正确解释布局变化" : "Correctly explained the layout change"}</li></ul></div>
+      <div className="completion-panel callout" data-tone="info"><h3 className="callout-title"><Check weight="bold" />{locale === "zh" ? "本章完成标准" : "Completion evidence"}</h3><p>{locale === "zh" ? "这里记录的是你完成了有效学习过程，不等同于永久掌握。章末还有一次简短小测。" : "This records a useful learning process, not permanent mastery. A short quiz follows."}</p><ul><li className={predicted ? "met" : ""}>{predicted && <Check />}{locale === "zh" ? "已经作出预测" : "Made a prediction"}</li><li className={tried ? "met" : ""}>{tried && <Check />}{locale === "zh" ? "当前布局达到全部目标条件" : "Matched every target condition"}</li><li className={answered ? "met" : ""}>{answered && <Check />}{locale === "zh" ? "已正确解释布局变化" : "Correctly explained the layout change"}</li></ul></div>
       <div className="check-actions"><button className="button" disabled={isDone || !predicted || !tried || answer === null} onClick={submit}>{isDone ? <Check weight="bold" /> : <Play />}{isDone ? (locale === "zh" ? "学习证据已完成" : "Learning evidence complete") : (locale === "zh" ? "检查即时题" : "Check answer")}</button></div>
       {!isDone && (!predicted || !tried || answer === null) && <p className="missing-requirement"><LockKey />{!predicted ? (locale === "zh" ? "还需先完成预测" : "Complete the prediction first") : !tried ? (locale === "zh" ? "还需在右侧教学板达到全部目标" : "Match every target in the board") : (locale === "zh" ? "还需选择一个答案" : "Choose an answer")}</p>}
       {checked && <p className={correct ? "feedback correct" : "feedback"}>{correct ? (locale === "zh" ? "回答正确，三项学习证据已满足。现在可以完成章末小测。" : "Correct. All three learning checks are complete. You can now take the chapter quiz.") : (locale === "zh" ? `你选择了“${answer === null ? "" : read(activity.checkOptions[answer], locale)}”。再想一想：刚才调整的是尺寸、内容，还是元素之间的布局关系？` : `You chose “${answer === null ? "" : read(activity.checkOptions[answer], locale)}”. Reconsider whether the demo changed size, content, or the relationship between elements.`)}</p>}
