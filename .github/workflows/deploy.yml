@@ -34,11 +34,10 @@ jobs:
         run: npm run build
 
       - name: Setup Pages
+        # 注意：GitHub Pages 需要先在 Settings → Pages → Build and deployment →
+        # Source 选一次 “GitHub Actions”。GITHUB_TOKEN 没有创建 Pages 站点的权限，
+        # 因此这里不能靠 enablement: true 自动开启（会报 Resource not accessible by integration）。
         uses: actions/configure-pages@v5
-        with:
-          # 尝试用工作流令牌直接开启 Pages（仓库公开 + pages: write 权限即可），
-          # 这样无需先手动去 Settings → Pages 选 GitHub Actions。
-          enablement: true
 
       - name: Upload build output
         uses: actions/upload-pages-artifact@v3
