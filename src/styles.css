@@ -247,14 +247,41 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .home-hero .course-stats { margin-top: var(--sp-5); }
 .home-hero .hero-actions { margin-top: var(--sp-4); }
 
-/* hero 示意板：三组状态叠放，基态显示 Grid（减少动效的用户看到的就是它） */
+/* hero 示意板：HTML 方块做 transform 形变（不是 SVG —— SVG 子元素很难进合成层，
+   每帧重绘整块 SVG 就是"看着卡"的来源）；标记与标签只动 opacity。
+   基态是 Grid 排布，所以减少动效的用户看到的是一张完整静态图。 */
 .hero-board-figure { margin: 0; display: grid; gap: var(--sp-3); padding: var(--sp-4); border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.hero-board-frame svg { display: block; width: 100%; height: auto; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-.hero-state { opacity: 0; }
-.hero-state[data-state="grid"] { opacity: 1; }
-.hero-block { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.2; }
+.hero-board { position: relative; width: 100%; aspect-ratio: 560 / 240; contain: layout paint; }
+.hero-board-inner { position: absolute; inset: 0; }
+.hero-block { position: absolute; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); transform-origin: 0 0; will-change: transform; }
+.hero-gap { position: absolute; top: 26.667%; width: 1.0714%; height: 46.667%; border-radius: 3px; background: color-mix(in srgb, var(--code-accent) 50%, transparent); opacity: 0; }
+.hero-track { position: absolute; top: 15%; bottom: 11.667%; width: 0; border-left: 1px dashed var(--muted); opacity: 0; }
+.hero-board-label { position: absolute; left: 7.143%; top: 86%; display: flex; gap: 6px; align-items: baseline; color: var(--muted); font: 600 12px ui-monospace, monospace; }
+.hero-board-label em { font-style: normal; font-weight: 400; }
+.hero-board-label.label-grid { opacity: 1; }
+.hero-board-label.label-flow, .hero-board-label.label-flex { opacity: 0; }
+/* 点状态卡 = 跳到该排布的静态快照：与动画共用同一套 --fx/--lx 自定义属性，两者必然一致。
+   这组规则刻意放在动效守卫之外，所以 prefers-reduced-motion 的用户同样能点到每一态。 */
+.hero-state-chip button { display: grid; gap: 2px; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.hero-state-chip button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+.hero-board-figure[data-hold] .hero-block,
+.hero-board-figure[data-hold] .hero-gap,
+.hero-board-figure[data-hold] .hero-track,
+.hero-board-figure[data-hold] .hero-board-label,
+.hero-board-figure[data-hold] .hero-state-chip::after { animation: none; }
+.hero-board-figure[data-hold="flow"] .hero-block { transform: translate(var(--fx), var(--fy)) scale(var(--fsx), var(--fsy)); }
+.hero-board-figure[data-hold="flex"] .hero-block { transform: translate(var(--lx), var(--ly)) scale(var(--lsx), var(--lsy)); }
+.hero-board-figure[data-hold="grid"] .hero-block { transform: none; }
+.hero-board-figure[data-hold] .hero-board-label, .hero-board-figure[data-hold] .hero-gap, .hero-board-figure[data-hold] .hero-track { opacity: 0; }
+.hero-board-figure[data-hold="flow"] .hero-board-label.label-flow,
+.hero-board-figure[data-hold="flex"] .hero-board-label.label-flex,
+.hero-board-figure[data-hold="grid"] .hero-board-label.label-grid,
+.hero-board-figure[data-hold="flex"] .hero-gap,
+.hero-board-figure[data-hold="grid"] .hero-track { opacity: 1; }
+.hero-board-figure[data-hold] .hero-state-chip.is-pinned::after { opacity: 1; }
 .hero-board-states { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; }
-.hero-state-chip { display: grid; gap: 2px; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.hero-state-chip { position: relative; display: grid; gap: 2px; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.hero-state-chip::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); opacity: 0; pointer-events: none; }
 .hero-state-chip strong { font-size: 13px; }
 .hero-state-chip span { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
 .hero-board-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); color: var(--muted); font-size: 13px; line-height: 1.6; }
@@ -942,13 +969,19 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
 @keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes tick-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
 @keyframes ring-draw { from { stroke-dashoffset: var(--ring-full, 100); } to { stroke-dashoffset: var(--ring-done, 0); } }
-/* hero 三态循环：三组共用 7.2s，各自在自己的窗口里显示（窗口与下面的状态标签一一对应） */
-@keyframes hero-state-flow { 0%, 26% { opacity: 1; } 33%, 100% { opacity: 0; } }
-@keyframes hero-state-flex { 0%, 33% { opacity: 0; } 39%, 59% { opacity: 1; } 66%, 100% { opacity: 0; } }
-@keyframes hero-state-grid { 0%, 66% { opacity: 0; } 72%, 93% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes hero-chip-0 { 0%, 26% { opacity: 1; background-color: var(--accent-soft); } 33%, 100% { opacity: .55; background-color: var(--surface-2); } }
-@keyframes hero-chip-1 { 0%, 33% { opacity: .55; background-color: var(--surface-2); } 39%, 59% { opacity: 1; background-color: var(--accent-soft); } 66%, 100% { opacity: .55; background-color: var(--surface-2); } }
-@keyframes hero-chip-2 { 0%, 66% { opacity: .55; background-color: var(--surface-2); } 72%, 93% { opacity: 1; background-color: var(--accent-soft); } 100% { opacity: .55; background-color: var(--surface-2); } }
+/* hero 形变：0–26% 普通流、39–59% Flex、72–93% Grid，其余 13%（≈0.94s）用来位移。
+   六块共用同一组关键帧，差异全部来自各块行内写入的 --fx/--lx 等自定义属性。 */
+@keyframes hero-morph {
+  0%, 26% { transform: translate(var(--fx), var(--fy)) scale(var(--fsx), var(--fsy)); }
+  39%, 59% { transform: translate(var(--lx), var(--ly)) scale(var(--lsx), var(--lsy)); }
+  72%, 93% { transform: none; }
+  100% { transform: translate(var(--fx), var(--fy)) scale(var(--fsx), var(--fsy)); }
+}
+@keyframes hero-show-flex { 0%, 33% { opacity: 0; } 37%, 61% { opacity: 1; } 65%, 100% { opacity: 0; } }
+@keyframes hero-show-grid { 0%, 66% { opacity: 0; } 70%, 93% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hero-label-flow { 0%, 30% { opacity: 1; } 33%, 96% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes hero-label-flex { 0%, 34% { opacity: 0; } 37%, 61% { opacity: 1; } 65%, 100% { opacity: 0; } }
+@keyframes hero-label-grid { 0%, 66% { opacity: 0; } 69%, 93% { opacity: 1; } 97%, 100% { opacity: 0; } }
 
 /* 顶部滚动进度条：不支持 scroll-driven 动画的浏览器不渲染这个元素（默认 display:none）。 */
 .scroll-progress { display: none; }
@@ -984,15 +1017,22 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
     .stage-track > li, .pain-cards > li, .topic-strip .topic-card, .chapter-group { animation: fade-up var(--t-slow) var(--ease) backwards; animation-timeline: view(); animation-range: entry 4% cover 22%; }
   }
 
-  /* hero 示意板：三态循环 + 状态标签同步高亮；指针悬停时整套暂停 */
-  .hero-state[data-state="flow"] { animation: hero-state-flow 7.2s var(--ease) infinite both; }
-  .hero-state[data-state="flex"] { animation: hero-state-flex 7.2s var(--ease) infinite both; }
-  .hero-state[data-state="grid"] { animation: hero-state-grid 7.2s var(--ease) infinite both; }
-  .hero-state-chip { animation-duration: 7.2s; animation-timing-function: var(--ease); animation-iteration-count: infinite; animation-fill-mode: both; }
-  .hero-state-chip.chip-0 { animation-name: hero-chip-0; }
-  .hero-state-chip.chip-1 { animation-name: hero-chip-1; }
-  .hero-state-chip.chip-2 { animation-name: hero-chip-2; }
-  .hero-board-figure[data-paused="true"] .hero-state, .hero-board-figure[data-paused="true"] .hero-state-chip { animation-play-state: paused; }
+  /* hero 示意板：方块形变 + 标记/标签/选项同步；暂停时整组停在同一帧 */
+  .hero-block { animation: hero-morph 7.2s var(--ease) infinite both; }
+  .hero-gap { animation: hero-show-flex 7.2s var(--ease) infinite both; }
+  .hero-track { animation: hero-show-grid 7.2s var(--ease) infinite both; }
+  .hero-board-label.label-flow { animation: hero-label-flow 7.2s var(--ease) infinite both; }
+  .hero-board-label.label-flex { animation: hero-label-flex 7.2s var(--ease) infinite both; }
+  .hero-board-label.label-grid { animation: hero-label-grid 7.2s var(--ease) infinite both; }
+  .hero-state-chip.chip-0::after { animation: hero-label-flow 7.2s var(--ease) infinite both; }
+  .hero-state-chip.chip-1::after { animation: hero-label-flex 7.2s var(--ease) infinite both; }
+  .hero-state-chip.chip-2::after { animation: hero-label-grid 7.2s var(--ease) infinite both; }
+  .hero-board-figure.is-paused .hero-block, .hero-board-figure.is-paused .hero-gap, .hero-board-figure.is-paused .hero-track,
+  .hero-board-figure.is-paused .hero-board-label, .hero-board-figure.is-paused .hero-state-chip::after { animation-play-state: paused; }
+  /* 钉住某一态时给它一段过渡，切换手感不突兀（仍然只动 transform / opacity） */
+  .hero-board-figure[data-hold] .hero-block { transition: transform var(--t-slow) var(--ease); }
+  .hero-board-figure[data-hold] .hero-gap, .hero-board-figure[data-hold] .hero-track,
+  .hero-board-figure[data-hold] .hero-board-label, .hero-board-figure[data-hold] .hero-state-chip::after { transition: opacity var(--t-mid) var(--ease); }
 
   /* 进度环：从 0 画到当前完成度（--ring-done 由组件按比例写入） */
   .ring-value { animation: ring-draw var(--t-slow) var(--ease) backwards; }
@@ -1050,10 +1090,16 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
   .topic-card:hover p { color: var(--text); }
   .topic-card:hover .topic-card-num, .topic-card:hover h2, .topic-card:hover h3 { color: var(--accent-dark); }
 
-  /* hero 示意板：指针移上去暂停整段循环，指针所在的方块自己抬起 */
-  .hero-board-figure:hover .hero-state, .hero-board-figure:hover .hero-state-chip { animation-play-state: paused; }
-  .hero-block { transition: fill var(--t-fast) var(--ease), stroke var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
-  .hero-block:hover { fill: var(--accent-soft); stroke: var(--accent); transform: translateY(-2px); }
+  /* hero 示意板：指针停在画板上就暂停整段循环；被指到的方块只换底色，不动 transform（避免与形变打架） */
+  .hero-board:hover .hero-block, .hero-board:hover .hero-gap, .hero-board:hover .hero-track,
+  .hero-board:hover .hero-board-label, .hero-board:hover .hero-state-chip::after { animation-play-state: paused; }
+  .hero-block { transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+  .hero-block:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+  .hero-state-chip { transition: border-color var(--t-fast) var(--ease); }
+  .hero-state-chip:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .hero-state-chip button:hover strong { color: var(--accent-dark); }
+  .hero-state-chip strong { transition: color var(--t-fast) var(--ease); }
 
   /* 三个真问题：指针移上去才演示「修好后」的样子 */
   .pain-band, .pain-head, .pain-num-a, .pain-num-b, .pain-long, .pain-wrapped, .pain-gap { transition: transform var(--t-mid) var(--ease), opacity var(--t-mid) var(--ease); }

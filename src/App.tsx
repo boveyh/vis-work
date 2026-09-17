@@ -355,22 +355,76 @@ const PAIN = [
   },
 ];
 
-/* hero 示意板：三态交叉淡入 + 悬停停住 + 暂停/重播（动画全在 CSS 里，这里只管状态） */
-function HeroBoard({ locale, paused, onToggle, onReplay, replay }: { locale: Locale; paused: boolean; onToggle: () => void; onReplay: () => void; replay: number }) {
+/* hero 示意板：6 个方块只做 transform 形变（普通流 → Flex → Grid），标记与标签只做 opacity。
+   坐标以 560×240 的画板为基准，用百分比表达，因此与响应式缩放天然一致；形变位移相对自身尺寸，
+   所以整段动画只有 transform/opacity —— 可交给合成器，不产生逐帧重绘。 */
+const BOARD = { w: 560, h: 240 };
+const pct = (value: number) => `${Math.round(value * 1000) / 1000}%`;
+
+const HERO_BLOCKS = Array.from({ length: 6 }, (_, index) => {
+  const row = Math.floor(index / 3);
+  const col = index % 3;
+  const grid = { x: 40 + 156 * col, y: 44 + 96 * row, w: 140, h: 76 };
+  const flow = { x: 40, y: 14 + 36 * index, w: 480, h: 26 };
+  const flex = { x: 52 + 76 * index, y: 64, w: 70, h: 112 };
+  return {
+    index,
+    style: {
+      left: pct((grid.x / BOARD.w) * 100),
+      top: pct((grid.y / BOARD.h) * 100),
+      width: pct((grid.w / BOARD.w) * 100),
+      height: pct((grid.h / BOARD.h) * 100),
+      "--fx": pct(((flow.x - grid.x) / grid.w) * 100),
+      "--fy": pct(((flow.y - grid.y) / grid.h) * 100),
+      "--fsx": (flow.w / grid.w).toFixed(4),
+      "--fsy": (flow.h / grid.h).toFixed(4),
+      "--lx": pct(((flex.x - grid.x) / grid.w) * 100),
+      "--ly": pct(((flex.y - grid.y) / grid.h) * 100),
+      "--lsx": (flex.w / grid.w).toFixed(4),
+      "--lsy": (flex.h / grid.h).toFixed(4),
+    } as CSSProperties,
+  };
+});
+
+const HERO_GAPS = [0, 1, 2, 3, 4].map((index) => ({ index, left: pct(((122 + 76 * index) / BOARD.w) * 100) }));
+
+/* hero 示意板：CSS 负责形变与三态标签，组件只管三件事——暂停、重播、以及"钉住某一态" */
+function HeroBoard({ locale, paused, pinned, replay, onToggle, onReplay, onPin }: { locale: Locale; paused: boolean; pinned: string | null; replay: number; onToggle: () => void; onReplay: () => void; onPin: (id: string | null) => void }) {
   const zh = locale === "zh";
+  const figureRef = useRef<HTMLElement | null>(null);
+  const [inView, setInView] = useState(true);
   const states = [
     { id: "flow", name: zh ? "普通流" : "Normal flow", note: zh ? "每个块级盒占一行" : "one row per block" },
     { id: "flex", name: "Flex", note: zh ? "一行排列，gap 只留空隙" : "one row, gap in between" },
     { id: "grid", name: "Grid", note: zh ? "三列两行，轨道决定位置" : "three tracks, two rows" },
   ];
-  const board = FIGURES["home-board"].svg.replace('role="img" ', "").replace("<svg ", '<svg aria-hidden="true" focusable="false" ');
-  return <figure className="hero-board-figure" data-paused={paused ? "true" : "false"}>
-    <div className="hero-board-frame" key={replay} dangerouslySetInnerHTML={{ __html: board }} />
+  /* 滚出视口就暂停：循环动画没必要在看不见的地方继续跑（省电、也省 GPU） */
+  useEffect(() => {
+    const element = figureRef.current;
+    if (!element || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { threshold: 0.15 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return <figure className={`hero-board-figure ${paused || !inView ? "is-paused" : ""}`} data-hold={pinned ?? undefined} ref={figureRef}>
+    <div className="hero-board" role="img" aria-label={zh ? "同一组方块在普通流、Flex 与 Grid 三种排布之间来回变形；点下面的状态可以停在任意一种" : "The same set of boxes morphing between normal flow, flex and grid; pick a state below to hold it"}>
+      <div className="hero-board-inner" key={replay}>
+        {HERO_BLOCKS.map((block) => <i className="hero-block" style={block.style} key={block.index} />)}
+        {HERO_GAPS.map((gap) => <b className="hero-gap" style={{ left: gap.left }} key={gap.index} />)}
+        <span className="hero-track" style={{ left: pct((186 / BOARD.w) * 100) }} />
+        <span className="hero-track" style={{ left: pct((342 / BOARD.w) * 100) }} />
+        {states.map((state) => <span className={`hero-board-label label-${state.id}`} key={state.id}>{state.name}<em>{state.note}</em></span>)}
+      </div>
+    </div>
     <ul className="hero-board-states">
-      {states.map((state, index) => <li className={`hero-state-chip chip-${index}`} key={state.id}><strong>{state.name}</strong><span>{state.note}</span></li>)}
+      {states.map((state, index) => <li className={`hero-state-chip chip-${index} ${pinned === state.id ? "is-pinned" : ""}`} key={state.id}>
+        <button type="button" aria-pressed={pinned === state.id} onClick={() => onPin(pinned === state.id ? null : state.id)}>
+          <strong>{state.name}</strong><span>{state.note}</span>
+        </button>
+      </li>)}
     </ul>
     <figcaption className="hero-board-note">
-      <span>{zh ? "同一份 HTML，三种排布。指针移上去就停住，可以看清每个盒。" : "One piece of HTML, three arrangements. Point at it to stop and look."}</span>
+      <span>{zh ? "同一份 HTML，三种排布。点下面的状态就停在那一态，指针停在画板上也会暂停。" : "One piece of HTML, three arrangements. Pick a state to hold it, or point at the board to pause."}</span>
       <span className="hero-board-actions">
         <button type="button" className="text-button" aria-pressed={paused} onClick={onToggle}>{paused ? (zh ? "继续" : "Play") : (zh ? "暂停" : "Pause")}</button>
         <button type="button" className="text-button" onClick={onReplay}>{zh ? "重播" : "Replay"}</button>
@@ -384,6 +438,7 @@ function Home() {
   const zh = locale === "zh";
   const { done, practiced, chapterPassed, stagePassed, completedCount, totalCount, nextHref } = useProgress();
   const [boardPaused, setBoardPaused] = useState(false);
+  const [boardPinned, setBoardPinned] = useState<string | null>(null);
   const [replay, setReplay] = useState(0);
   const nextParts = nextHref.match(/\/lesson\/([^?]+)/);
   const nextLesson = lessons.find((item) => item.id === nextParts?.[1]) ?? lessons[0];
@@ -408,7 +463,15 @@ function Home() {
           </div>
         </div>
         <div className="hero-demo">
-          <HeroBoard locale={locale} paused={boardPaused} onToggle={() => setBoardPaused((value) => !value)} onReplay={() => setReplay((value) => value + 1)} replay={replay} />
+          <HeroBoard
+            locale={locale}
+            paused={boardPaused}
+            pinned={boardPinned}
+            replay={replay}
+            onToggle={() => { setBoardPinned(null); setBoardPaused((value) => !value); }}
+            onReplay={() => { setBoardPinned(null); setBoardPaused(false); setReplay((value) => value + 1); }}
+            onPin={(id) => { setBoardPinned(id); if (id) setBoardPaused(false); }}
+          />
         </div>
       </section>
 
