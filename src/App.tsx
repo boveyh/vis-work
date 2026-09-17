@@ -172,6 +172,7 @@ function Shell({ children }: { children: ReactNode }) {
       main.scrollIntoView({ block: "start" });
       (main as HTMLElement).focus({ preventScroll: true });
     }}>{locale === "zh" ? "跳到主要内容" : "Skip to main content"}</button>
+    <div className="scroll-progress" aria-hidden="true" />
     <header className="site-nav">
       <Link className="brand" to={`/${locale}`} aria-label="Layout Lab home"><span className="brand-mark"><i /><i /><i /></span>Layout Lab</Link>
       <nav aria-label={locale === "zh" ? "主导航" : "Main navigation"}>

@@ -36,6 +36,11 @@
   --sp-5: 24px;
   --sp-6: 32px;
   --sp-7: 48px;
+  /* 动效令牌：一条缓动曲线 + 三档时长，所有反应都从这里取值，避免各写一套。 */
+  --ease: cubic-bezier(.22, .61, .36, 1);
+  --t-fast: 160ms;
+  --t-mid: 260ms;
+  --t-slow: 520ms;
 }
 
 :root[data-theme="dark"] {
@@ -65,7 +70,7 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; min-height: 100dvh; background: var(--bg); color: var(--text); }
+body { margin: 0; min-width: min(320px, 100%); min-height: 100dvh; background: var(--bg); color: var(--text); }
 button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 a { color: inherit; text-decoration: none; }
@@ -237,7 +242,7 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 
 /* ---------- learning dashboard ---------- */
 .dashboard-home { padding-bottom: 72px; }
-.learning-dashboard { display: grid; grid-template-columns: 1fr minmax(340px, .72fr); gap: 28px; align-items: stretch; padding: 34px 0; border-bottom: 1px solid var(--line); }
+.learning-dashboard { display: grid; grid-template-columns: 1fr minmax(min(340px, 100%), .72fr); gap: 28px; align-items: stretch; padding: 34px 0; border-bottom: 1px solid var(--line); }
 .dashboard-summary { display: flex; flex-direction: column; justify-content: center; padding: 18px 0; }
 .dashboard-summary p { color: var(--accent); font-size: 13px; font-weight: 800; margin: 0 0 10px; }
 .dashboard-summary h1 { max-width: 14ch; font-size: clamp(30px, 4vw, 44px); letter-spacing: -.03em; margin: 0 0 14px; }
@@ -360,11 +365,11 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .counter-rows > div:last-child { border-bottom: 0; padding-bottom: 0; }
 .counter-rows dt { color: var(--muted); font-size: 12.5px; font-weight: 700; }
 .counter-rows dd { margin: 0; font-size: 14.5px; line-height: 1.7; }
-.teaching-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-3); }
+.teaching-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--sp-4); margin-top: var(--sp-3); }
 .teaching-col { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
 .teaching-col h3 { margin: 0 0 var(--sp-2); font-size: 13.5px; }
 .teaching-col ul { margin: 0; padding-left: var(--sp-4); color: var(--muted); font-size: 14px; line-height: 1.75; }
-.glossary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-3); margin: var(--sp-3) 0 0; }
+.glossary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: var(--sp-3); margin: var(--sp-3) 0 0; }
 .glossary-grid > div { padding: var(--sp-3); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .glossary-grid dt { margin-bottom: var(--sp-1); }
 .glossary-grid dt code { font: 600 13px ui-monospace, monospace; color: var(--code-accent); }
@@ -377,7 +382,7 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .bibliography-list li[data-kind="paper"] > span { border-color: color-mix(in srgb, var(--tone-4) 45%, var(--line)); color: var(--tone-4); }
 .bibliography-list li[data-kind="article"] > span { border-color: color-mix(in srgb, var(--success) 45%, var(--line)); color: var(--success); }
 .bibliography-list a { color: var(--code-accent); overflow-wrap: anywhere; }
-.topic-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-4); }
+.topic-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: var(--sp-4); margin-top: var(--sp-4); }
 .topic-card { display: grid; gap: var(--sp-2); align-content: start; padding: var(--sp-4); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; text-decoration: none; }
 .topic-card:hover { border-color: var(--accent); }
 .topic-card-num { color: var(--accent); font: 800 12px ui-monospace, monospace; }
@@ -434,7 +439,7 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .deep-dive p { margin: 0 0 var(--sp-2); color: var(--muted); font-size: 14.5px; line-height: 1.8; }
 .deep-dive p:last-child { margin-bottom: 0; }
 /* ---------- 概念图解：内联 SVG，跟随主题变量 ---------- */
-.figure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-3); }
+.figure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: var(--sp-4); margin-top: var(--sp-3); }
 .figure-item { margin: 0; padding: var(--sp-3); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .figure-canvas { overflow: visible; }
 .figure-canvas svg { display: block; width: 100%; height: auto; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
@@ -680,7 +685,7 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .about-grid > div { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 24px 26px; }
 .about-grid h2 { font-size: 18px; margin: 0 0 10px; }
 .about-grid p { color: var(--muted); line-height: 1.8; margin: 0; font-size: 14.5px; }
-footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: start; gap: var(--sp-5) var(--sp-6); width: min(100% - 40px, 1280px); margin-inline: auto; padding: var(--sp-6) 0 var(--sp-7); border-top: 1px solid var(--line); }
+footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); align-items: start; gap: var(--sp-5) var(--sp-6); width: min(100% - 40px, 1280px); margin-inline: auto; padding: var(--sp-6) 0 var(--sp-7); border-top: 1px solid var(--line); }
 .footer-brand strong { font-size: 16px; }
 .footer-brand p { color: var(--muted); margin: var(--sp-1) 0 0; font-size: 14px; }
 .footer-col { display: grid; gap: var(--sp-2); align-content: start; }
@@ -712,7 +717,7 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1f
 .bank-set-head p { margin: 0; color: var(--muted); font-size: 13px; }
 .bank-state { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 .bank-state.is-passed { color: var(--success); border-color: color-mix(in srgb, var(--success) 38%, var(--line)); background: color-mix(in srgb, var(--success) 8%, var(--surface)); }
-.bank-questions { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 0 var(--sp-5); padding: var(--sp-4) var(--sp-5) var(--sp-5); }
+.bank-questions { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 0 var(--sp-5); padding: var(--sp-4) var(--sp-5) var(--sp-5); }
 .bank-question { display: grid; align-content: start; gap: var(--sp-3); padding: var(--sp-4) 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
 .bank-question header { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: baseline; }
 .bank-num { color: var(--accent); font: 800 11px ui-monospace, monospace; }
@@ -852,9 +857,61 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1f
   .concept-step .focus-rule { grid-template-columns: 1fr; gap: var(--sp-1); }
 }
 
+
+/* 用户要求减少动效时全站退化为静态：动画与过渡一律关闭（基态本来就是可见态）。 */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
+
+
+/* ---------- motion ----------
+   约定（写完就照这个检查）：
+   1. 基态就是可见态，隐藏态只写在 @keyframes 里 —— 这样 prefers-reduced-motion 关掉动画后
+      内容不会消失；
+   2. 只动 opacity / transform / filter / stroke-dashoffset / color / background / box-shadow，
+      不动宽高与内外边距，也不用 translateX（否则会碰“无横向溢出”的验收）；
+   3. 时长 ≤ 600ms，缓动统一取 --ease；
+   4. 指针反应单独包在 (hover: hover) and (pointer: fine) 里，触摸设备不粘高亮。 */
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes route-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fig-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes tick-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes ring-draw { from { stroke-dashoffset: var(--ring-full, 100); } to { stroke-dashoffset: var(--ring-done, 0); } }
+
+/* 顶部滚动进度条：不支持 scroll-driven 动画的浏览器不渲染这个元素（默认 display:none）。 */
+.scroll-progress { display: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 入场：基态在规则外已经写好，这里只补一段 backwards 的进入动画。 */
+  .fade-up { animation: fade-up var(--t-slow) var(--ease) backwards; }
+  .fade-up-1 { animation-delay: 70ms; }
+  .fade-up-2 { animation-delay: 140ms; }
+  .fade-up-3 { animation-delay: 210ms; }
+  .route-fade { animation: route-in var(--t-mid) var(--ease) backwards; }
+
+  @supports (animation-timeline: scroll()) {
+    .scroll-progress {
+      display: block;
+      position: fixed;
+      inset: 0 0 auto;
+      height: 2px;
+      z-index: 70;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: 0 50%;
+      animation: bar-grow linear both;
+      animation-timeline: scroll(root);
+      pointer-events: none;
+    }
+  }
+
+  /* 图解：进入视口时内部元素错峰淡入；Safari/Firefox 未支持时保持静态，内容不受影响。 */
+  @supports (animation-timeline: view()) {
+    .figure-canvas svg > * { animation: fig-in var(--t-slow) var(--ease) backwards; animation-timeline: view(); animation-range: entry 10% cover 32%; }
+  }
+}
+
 
 /* ---------- print ---------- */
 @media print {
