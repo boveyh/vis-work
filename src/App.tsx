@@ -969,7 +969,7 @@ function ExportActions({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
   return <div className="export-actions" data-lesson={lesson.id}>
     <p className="export-hint">{zh ? "把这一章的示例带走：复制代码，或下载成一个能直接双击打开的独立页面。" : "Take this chapter's example with you: copy the code, or download it as a standalone page you can open by double-clicking."}</p>
     <div className="export-buttons">
-      <button type="button" className="button" onClick={copy}>{state === "ok" ? (zh ? "已复制到剪贴板" : "Copied") : state === "fail" ? (zh ? "复制失败，请手动选择" : "Copy failed, select manually") : (zh ? "复制 HTML 与 CSS" : "Copy HTML and CSS")}</button>
+      <button type="button" className={`button ${state === "ok" ? "is-copied" : ""}`} onClick={copy}>{state === "ok" && <Check weight="bold" />}{state === "ok" ? (zh ? "已复制到剪贴板" : "Copied") : state === "fail" ? (zh ? "复制失败，请手动选择" : "Copy failed, select manually") : (zh ? "复制 HTML 与 CSS" : "Copy HTML and CSS")}</button>
       <a className="button ghost" href={`data:text/html;charset=utf-8,${encodeURIComponent(bundle)}`} download={filename}>{zh ? "下载本章示例（.html）" : "Download this example (.html)"}</a>
     </div>
     <p className="export-meta">{zh ? `文件名 ${filename} · 内含本章 HTML、CSS 与一份最小页面骨架，离线可用。` : `File ${filename} · contains this chapter's HTML, CSS and a minimal page shell; works offline.`}</p>

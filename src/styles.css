@@ -1004,8 +1004,24 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
   .home-hero .hero-copy > *:nth-child(4) { animation-delay: 180ms; }
   .home-hero .hero-copy > *:nth-child(5) { animation-delay: 240ms; }
   .home-hero .hero-demo { animation-delay: 120ms; }
+
+  /* 完整走查：三步进入视口时依次点亮，最后一行结果紧随其后 */
+  .walkthrough-steps > li { animation: fade-up var(--t-mid) var(--ease) backwards; animation-timeline: view(); animation-range: entry 6% cover 24%; }
+  .walkthrough-steps > li:nth-child(2) { animation-delay: 90ms; }
+  .walkthrough-steps > li:nth-child(3) { animation-delay: 180ms; }
+  .walkthrough-result { animation: fig-in var(--t-mid) var(--ease) backwards; animation-timeline: view(); animation-range: entry 8% cover 26%; }
+
+  /* 复制成功：对勾弹入（其余状态不变） */
+  .export-actions .button.is-copied svg { animation: tick-pop var(--t-fast) var(--ease); }
 }
 
+
+/* 折叠块（查看完整 HTML 与 CSS 等）：支持的浏览器平滑展开，其余直接切换 */
+@supports selector(details::details-content) {
+  .full-code::details-content, .generated-details::details-content { block-size: 0; overflow: hidden; transition: block-size var(--t-mid) var(--ease); }
+  .full-code[open]::details-content, .generated-details[open]::details-content { block-size: auto; }
+  :root { interpolate-size: allow-keywords; }
+}
 
 /* ---------- pointer reactions ----------
    只在真的有指针的设备上生效：触摸设备点一下不会留下“粘住”的高亮。
@@ -1047,6 +1063,42 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
   .pain-sticky:hover .pain-head { transform: translateY(0); }
   .pain-sticky:hover .pain-gap { opacity: 0; }
   .pain-card:hover .pain-gain { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* 章节导航与页内目录：整行右移 2px，指针落点更明确 */
+  .lesson-list a { transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+  .lesson-list a:hover { transform: translateX(2px); }
+  .section-nav a, .topic-outline button { transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+  .section-nav a:hover, .topic-outline button:hover { transform: translateX(2px); }
+  .bibliography-list a, .concept-refs a { transition: color var(--t-fast) var(--ease); }
+  .bibliography-list a:hover, .concept-refs a:hover { color: var(--accent); }
+
+  /* 属性速查表：整行高亮，第一列变色（表头 sticky 不受影响） */
+  .property-table tbody tr { transition: background var(--t-fast) var(--ease); }
+  .property-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+  .property-table tbody td:first-child { transition: color var(--t-fast) var(--ease); }
+  .property-table tbody tr:hover td:first-child { color: var(--accent-dark); }
+
+  /* 题库与章末小测的选项 */
+  .bank-options li, .quiz-options label { transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+  .bank-options li:hover, .quiz-options label:hover { transform: translateX(2px); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+
+  /* 演示面板：指针停在哪一块，就描出哪一块（轮廓不参与布局） */
+  .diagram-flex > i, .diagram-grid > i, .diagram-split i, .diagram-pattern i, .diagram-project i, .diagram-document i, .diagram-position b { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+  .diagram-flex > i:hover, .diagram-grid > i:hover, .diagram-split i:hover, .diagram-pattern i:hover, .diagram-project i:hover, .diagram-document i:hover, .diagram-position b:hover { outline-color: var(--accent); transform: translateY(-2px); }
+
+  /* 按钮与图标按钮：抬升 1px，箭头前移 2px */
+  .button { transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
+  .button:hover { transform: translateY(-1px); box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 26%, transparent); }
+  .button svg { transition: transform var(--t-fast) var(--ease); }
+  .button:hover svg { transform: translateX(2px); }
+  .icon-button { transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+  .icon-button:hover { transform: translateY(-1px); }
+  .nav-progress { transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  .nav-progress:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 走查三步：指针停在哪一步就以强调色标出序号 */
+  .walkthrough-steps li { transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+  .walkthrough-steps li:hover { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
 }
 
 /* ---------- print ---------- */
