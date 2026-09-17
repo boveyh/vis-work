@@ -330,6 +330,12 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 /* ---------- theory layer：规范出处 / 类比 / 演示指引 / 反例 / 教师视角 / 术语 / 文献 ---------- */
 .callout.concept-principle { display: grid; gap: 2px; margin: var(--sp-3) 0 0; border-left-color: var(--code-accent); background: color-mix(in srgb, var(--code-accent) 7%, var(--surface)); }
 .callout.concept-principle b { color: var(--code-accent); font-size: 11.5px; }
+.concept-walkthrough { margin: var(--sp-3) 0 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.concept-walkthrough h4 { margin: 0 0 var(--sp-2); color: var(--navy); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+.walkthrough-situation { margin: 0; font-size: 14.5px; line-height: 1.8; }
+.walkthrough-steps { margin: var(--sp-2) 0 0; padding-left: var(--sp-4); color: var(--muted); font-size: 14px; line-height: 1.8; }
+.walkthrough-result { display: grid; gap: 2px; margin: var(--sp-3) 0 0; padding-top: var(--sp-2); border-top: 1px dashed color-mix(in srgb, var(--line) 70%, transparent); font-size: 14px; }
+.walkthrough-result b { color: var(--success); font-size: 11.5px; }
 .concept-analogy { display: grid; gap: 2px; margin: var(--sp-3) 0 0; padding-left: var(--sp-3); border-left: 2px dashed var(--line); color: var(--muted); }
 .concept-analogy b { color: var(--text); font-size: 11.5px; }
 .concept-demohint { display: grid; gap: 2px; margin: var(--sp-3) 0 0; padding: var(--sp-2) var(--sp-3); border: 1px dashed color-mix(in srgb, var(--accent) 48%, var(--line)); border-radius: 8px; background: color-mix(in srgb, var(--accent) 5%, var(--surface)); font-size: 14px; }

@@ -275,6 +275,127 @@ export const topics: Topic[] = [
       { label: "web.dev · Spacing", href: "https://web.dev/learn/css/spacing", kind: "article" },
     ],
   },
+  {
+    id: "debugging-layout",
+    eyebrow: "DEEP DIVE 03",
+    title: { zh: "布局调试方法论", en: "Debugging layout" },
+    summary: {
+      zh: "布局 bug 的共性是：肉眼看到的症状离原因很远。这一篇把排查拆成可复用的顺序——先量、再二分、最后写成断言，并给出四个必会面板的具体用法。",
+      en: "Layout bugs share one trait: the visible symptom is far from the cause. This deep dive turns debugging into a reusable order — measure first, bisect second, write an assertion last — and covers four DevTools panels worth knowing.",
+    },
+    minutes: { zh: "约 22 分钟", en: "22 min" },
+    sections: [
+      {
+        id: "order",
+        heading: { zh: "顺序：先量，再改", en: "Order: measure before editing" },
+        body: [
+          {
+            zh: "绝大多数布局“修复”之所以反复，是因为动手太快：凭感觉改一个值、看是否好转，再改下一个。更稳的做法是先拿到数字——元素的实际尺寸与位置——再判断差在参照物、盒模型还是算法上。数字会把猜测压缩成一两个候选原因。",
+            en: "Most layout “fixes” keep coming back because the hands move too early: change a value, see if it looks better, change the next one. A steadier routine is to get numbers first — real sizes and positions — then decide whether the difference lies in the reference, the box model or the algorithm. Numbers cut the guesswork down to one or two candidates.",
+          },
+        ],
+        list: [
+          { zh: "① 选中元素，读 Computed 面板里的实际取值，而不是 Styles 里写的那份。", en: "Select the element and read the computed values, not the ones written in Styles." },
+          { zh: "② 量出它现在的矩形与预期的差值，把差值记下来。", en: "Measure its current rectangle and note the gap to the expectation." },
+          { zh: "③ 判断差值是否恰好等于某个已知量：导航高度、内边距、圆角或滚动条宽度。", en: "Decide whether the gap equals a known quantity: navbar height, padding, radius or scrollbar width." },
+          { zh: "④ 沿祖先链找“已定位”与“滚动容器”两类祖先，各记下第一个命中项。", en: "Walk up for the first positioned ancestor and the first scroll container." },
+          { zh: "⑤ 确认原因后再动手，一次只改一处，改完重新量。", en: "Only then edit — one change at a time, then measure again." },
+        ],
+      },
+      {
+        id: "tools",
+        heading: { zh: "四个必会面板", en: "Four panels worth knowing" },
+        body: [
+          {
+            zh: "工具的价值不在于多，而在于知道它能回答哪个问题。先记住渲染管线的四段——style、layout、paint、composite——再看面板，就能判断“我该看谁”。",
+            en: "Tooling is not about quantity but about knowing which question each panel answers. Learn the four pipeline stages first — style, layout, paint, composite — and the panels fall into place.",
+          },
+        ],
+        figure: "render-pipeline",
+        table: {
+          head: [{ zh: "面板", en: "Panel" }, { zh: "回答什么问题", en: "Answers" }, { zh: "具体做法", en: "How" }],
+          rows: [
+            [{ zh: "Elements · Computed", en: "Elements · Computed" }, { zh: "实际生效的值是多少", en: "Which value actually won" }, { zh: "选中元素，看盒模型图与 computed 列表，被覆盖的值会划掉", en: "Select the element and read the box diagram plus the computed list; overridden values appear struck through" }],
+            [{ zh: "Layout 覆盖层", en: "Layout overlays" }, { zh: "网格与弹性轨道到底在哪", en: "Where the grid and flex tracks really are" }, { zh: "用 Elements 里的 grid / flex 徽章勾选轨道与区域高亮", en: "Use the grid or flex badge in Elements and enable track and area highlights" }],
+            [{ zh: "Rendering", en: "Rendering" }, { zh: "谁在重绘、谁被提升为层", en: "Who repaints and who got promoted to a layer" }, { zh: "开启 Paint flashing 与 Layer borders，滚动页面看闪烁范围", en: "Turn on paint flashing and layer borders, then scroll and watch which regions flash" }],
+            [{ zh: "Performance", en: "Performance" }, { zh: "这一帧花在哪一段", en: "Which stage the frame spends time in" }, { zh: "录一段交互，看 style / layout / paint / composite 的占比", en: "Record an interaction and read the style, layout, paint and composite breakdown" }],
+          ],
+        },
+      },
+      {
+        id: "measure",
+        heading: { zh: "用脚本量，而不是用眼睛猜", en: "Measure with a script, not with your eyes" },
+        body: [
+          {
+            zh: "目测只能判断“偏了”，说不出偏了多少。在 Console 里跑几行就能拿到精确数字，而且可以直接对比多个元素——本项目修吸顶表头时，正是量到表头与表框相差恰好 64px，才锁定是滚动容器换了参照。",
+            en: "Eyeballing tells you something is off but not by how much. A few lines in the console give exact numbers and let you compare several elements at once — when this project fixed its sticky header, the measurement showing exactly 64px between header and frame is what identified the swapped scroll container.",
+          },
+        ],
+        code: {
+          label: "量差值的最小脚本",
+          text: `const table = document.querySelector('.rates');
+const th = table.querySelector('thead th');
+const thead = table.querySelector('thead');
+
+// 表头相对表框偏了多少？
+Math.round(th.getBoundingClientRect().top - thead.getBoundingClientRect().top);
+
+// 谁是最近的滚动容器？
+let el = th.parentElement;
+while (el && el !== document.body) {
+  const cs = getComputedStyle(el);
+  if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+    console.log('scroll container:', el.tagName, cs.overflowX);
+  }
+  el = el.parentElement;
+}`,
+        },
+      },
+      {
+        id: "bisect",
+        heading: { zh: "二分法：让浏览器替你排除", en: "Bisect: let the browser rule things out" },
+        body: [
+          {
+            zh: "当候选原因太多，就用二分：把可能相关的声明成批注释掉，看症状是否消失，再逐半缩小范围。对布局特别有效，因为布局的因果关系往往跨越多层祖先。",
+            en: "When there are too many candidates, bisect: comment out a batch of plausible declarations, see whether the symptom disappears, then halve the range. It works especially well for layout, where cause and effect often span several ancestors.",
+          },
+        ],
+        list: [
+          { zh: "overflow 排查：临时给祖先链加 overflow: visible，看症状是否消失。", en: "Overflow hunt: temporarily set overflow: visible along the ancestor chain and see whether the symptom goes away." },
+          { zh: "位置排查：给可疑祖先加 outline: 1px solid red，确认它的盒子边界到底在哪。", en: "Positioning hunt: add outline: 1px solid red to a suspicious ancestor to see where its box really is." },
+          { zh: "层叠排查：临时移除 transform / filter / opacity，看上下文是否因此改变。", en: "Stacking hunt: temporarily remove transform, filter or opacity and see whether the context changes." },
+          { zh: "算法排查：把 auto-fit 换成固定列数，区分是算法问题还是内容问题。", en: "Algorithm hunt: swap auto-fit for a fixed column count to tell an algorithm problem from a content problem." },
+        ],
+      },
+      {
+        id: "prevent",
+        heading: { zh: "把这次修的东西变成断言", en: "Turn the fix into an assertion" },
+        body: [
+          {
+            zh: "修完不算完：同一个坑会被下一个人再踩一次。本项目修好吸顶表头后，把它写成了两条自动化断言——表头与表框偏移必须 ≤2px、表格自身的 overflow 必须是 visible——于是“再加一行 overflow: hidden 裁圆角”这种改动会立刻让测试红掉。修复的价值因此从“这一次对了”变成“以后不容易错”。",
+            en: "Fixing is not finishing: the next person steps in the same hole. After fixing its sticky header, this project turned the bug into two automated assertions — the header-to-frame offset must stay within 2px and the table's own overflow must remain visible — so a future “just clip the corner with overflow: hidden” turns the suite red immediately. The fix is worth more as “hard to break again” than as “right this once”.",
+          },
+          {
+            zh: "写断言时记住两点：断言可量化的几何关系，而不是“看起来对”；把阈值与原因写进断言名称，让失败信息本身就能提示原因。",
+            en: "Two rules for writing them: assert a measurable geometric relationship rather than “looks right”, and put the threshold and the reason in the assertion's name so the failure message explains itself.",
+          },
+        ],
+      },
+    ],
+    checklist: [
+      { zh: "遇到布局问题先量数字，再动手改样式。", en: "You measure before editing styles." },
+      { zh: "知道四个面板各自回答什么问题，尤其是 Layout 覆盖层。", en: "You know which question each of the four panels answers, especially the layout overlays." },
+      { zh: "会用脚本量两个元素的差值，并沿祖先链找滚动容器。", en: "You can script the difference between two elements and find scroll containers up the chain." },
+      { zh: "修完之后会把这次的关键几何关系写成断言。", en: "After a fix you turn its key geometric relationship into an assertion." },
+    ],
+    bibliography: [
+      { label: "Chrome DevTools · 检查网格", href: "https://developer.chrome.com/docs/devtools/css/grid", kind: "article" },
+      { label: "Chrome DevTools · 检查弹性布局", href: "https://developer.chrome.com/docs/devtools/css/flexbox", kind: "article" },
+      { label: "Chrome for Developers · RenderingNG", href: "https://developer.chrome.com/blog/renderingng", kind: "article" },
+      { label: "CSS Overflow 3 · 滚动容器", href: DRAFT("css-overflow-3/#scroll-container"), kind: "spec" },
+      { label: "CSS 2.2 §10.1 · 包含块", href: SPEC("visudet.html#containing-block-details"), kind: "spec" },
+    ],
+  },
 ];
 
 /* 「关于本课程」页的扩展区块：理论来源 / 设计原则 / 技术栈 / 质量保障 */
