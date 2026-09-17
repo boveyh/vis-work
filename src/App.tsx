@@ -4,6 +4,7 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } fr
 import { ArrowLeft, ArrowRight, Check, Copy, Lightbulb, List, LockKey, Moon, Play, Sun, X } from "@phosphor-icons/react";
 import { lessons, stageOf, stages, t, ui, type Copy as LocalizedCopy, type DemoKind, type KeyPoint, type Lesson, type Locale } from "./data";
 import { chapterQuizzes, stageQuizzes, type Quiz, type QuizQuestion } from "./quizData";
+import { FIGURES } from "./figures";
 
 const read = (value: { zh: string; en: string }, locale: Locale) => value[locale];
 const localeOf = (value?: string): Locale => (value === "en" ? "en" : "zh");
@@ -790,6 +791,18 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
         return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3 id={`concept-${index + 1}`} tabIndex={-1}>{read(block.heading, locale)}<AnchorButton target={`concept-${index + 1}`} label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3><p>{read(block.body, locale)}</p>{block.principle && <p className="callout concept-principle" data-tone="info"><b>{zh ? "规范怎么说" : "What the spec says"}</b>{read(block.principle, locale)}</p>}{point && <div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div>}{block.why && <p className="concept-why"><b>{zh ? "为什么" : "Why"}</b>{read(block.why, locale)}</p>}{block.snippet && <div className="code-block concept-snippet"><div>{zh ? "最小示例" : "Minimal example"}</div><pre><code>{block.snippet}</code></pre></div>}{block.pitfall && <p className="callout concept-pitfall" data-tone="warn"><b>{zh ? "容易踩坑" : "Watch out"}</b>{read(block.pitfall, locale)}</p>}{block.analogy && <p className="concept-analogy"><b>{zh ? "打个比方" : "Think of it as"}</b>{read(block.analogy, locale)}</p>}{block.demoHint && <p className="concept-demohint" data-step="03"><b>{zh ? "在演示里验证" : "Prove it in the demo"}</b>{read(block.demoHint, locale)}</p>}{block.refs && block.refs.length > 0 && <p className="concept-refs">{zh ? "延伸阅读" : "Further reading"}{block.refs.map((ref) => <a href={ref.href} target="_blank" rel="noreferrer" key={ref.href} data-kind={ref.kind || "docs"} title={read(REF_KIND[ref.kind || "docs"], locale)}>{ref.label}</a>)}</p>}</div></section>;
       })}
     </section>
+    {lesson.figures && lesson.figures.length > 0 && <section className="learning-block figure-block" id="figures" tabIndex={-1}>
+      <h2>{zh ? "概念图解" : "Figures"}<AnchorButton target="figures" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <p>{zh ? "每一张图对应上面某个概念的判断依据；看图时先自己说出结论，再回到正文核对措辞。" : "Each figure carries the reasoning behind one of the concepts above. Name the conclusion yourself first, then check the wording in the text."}</p>
+      <div className="figure-grid">{lesson.figures.map((item) => {
+        const figure = FIGURES[item.id];
+        if (!figure) return null;
+        return <figure className="figure-item" key={item.id}>
+          <div className="figure-canvas" role="img" aria-label={read(figure.label, locale)} dangerouslySetInnerHTML={{ __html: figure.svg }} />
+          <figcaption>{read(item.caption, locale)}</figcaption>
+        </figure>;
+      })}</div>
+    </section>}
     <section className="learning-block mistake-block callout" data-tone="warn"><h3 className="callout-title"><Lightbulb weight="fill" />{read(ui.mistakes, locale)}</h3><ul>{lesson.mistakes.map((mistake) => <li key={mistake.zh}>{read(mistake, locale)}</li>)}</ul></section>
     {lesson.counterExamples && lesson.counterExamples.length > 0 && <section className="learning-block counter-block" id="counter-examples" tabIndex={-1}>
       <span className="step-label">{zh ? "反例剖析" : "Counter examples"}</span>

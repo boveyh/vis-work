@@ -365,6 +365,26 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .bibliography-list li[data-kind="paper"] > span { border-color: color-mix(in srgb, var(--tone-4) 45%, var(--line)); color: var(--tone-4); }
 .bibliography-list li[data-kind="article"] > span { border-color: color-mix(in srgb, var(--success) 45%, var(--line)); color: var(--success); }
 .bibliography-list a { color: var(--code-accent); overflow-wrap: anywhere; }
+/* ---------- 概念图解：内联 SVG，跟随主题变量 ---------- */
+.figure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-3); }
+.figure-item { margin: 0; padding: var(--sp-3); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.figure-canvas { overflow: visible; }
+.figure-canvas svg { display: block; width: 100%; height: auto; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+.figure-item figcaption { margin-top: var(--sp-2); color: var(--muted); font-size: 13.5px; line-height: 1.7; }
+.fig-box { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.2; }
+.fig-dash { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.fig-accent { fill: color-mix(in srgb, var(--accent) 16%, var(--surface)); stroke: var(--accent); stroke-width: 1.4; }
+.fig-navy { fill: color-mix(in srgb, var(--navy) 12%, var(--surface)); stroke: var(--navy); stroke-width: 1.2; }
+.fig-surface { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.fig-surface-warn { fill: color-mix(in srgb, var(--danger) 8%, var(--surface)); stroke: var(--danger); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.fig-warn { fill: color-mix(in srgb, var(--danger) 20%, var(--surface)); stroke: var(--danger); stroke-width: 1.2; }
+.fig-margin { fill: color-mix(in srgb, var(--success) 22%, var(--surface)); stroke: var(--success); stroke-width: 1; }
+.fig-margin-warn { fill: color-mix(in srgb, var(--danger) 22%, var(--surface)); stroke: var(--danger); stroke-width: 1; }
+.fig-gap { fill: color-mix(in srgb, var(--code-accent) 22%, var(--surface)); stroke: var(--code-accent); stroke-width: 1; }
+.fig-arrow { fill: none; stroke: var(--muted); stroke-width: 1.4; }
+.fig-text { fill: var(--text); font-size: 12.5px; font-weight: 600; }
+.fig-muted { fill: var(--muted); font-size: 11.5px; }
+.fig-note { fill: var(--muted); font-size: 11.5px; }
 .lesson-checklist { margin-top: var(--sp-5); padding: var(--sp-4) var(--sp-5); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .lesson-checklist h3 { margin: 0 0 var(--sp-2); font-size: 15px; }
 .lesson-checklist ul { margin: 0; padding-left: var(--sp-5); color: var(--muted); font-size: 14.5px; line-height: 1.8; }
