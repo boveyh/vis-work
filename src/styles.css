@@ -365,6 +365,17 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .bibliography-list li[data-kind="paper"] > span { border-color: color-mix(in srgb, var(--tone-4) 45%, var(--line)); color: var(--tone-4); }
 .bibliography-list li[data-kind="article"] > span { border-color: color-mix(in srgb, var(--success) 45%, var(--line)); color: var(--success); }
 .bibliography-list a { color: var(--code-accent); overflow-wrap: anywhere; }
+/* ---------- 规范原文与深挖 ---------- */
+.spec-quote { margin: var(--sp-3) 0 0; padding: var(--sp-3) var(--sp-4); border-left: 3px solid var(--code-accent); border-radius: 0 10px 10px 0; background: var(--surface-2); }
+.spec-quote p { margin: 0; font-size: 15px; line-height: 1.8; }
+.spec-quote .spec-quote-zh { margin-top: var(--sp-2); color: var(--muted); font-size: 14px; }
+.spec-quote cite { display: block; margin-top: var(--sp-2); color: var(--muted); font-size: 12px; font-style: normal; }
+.spec-note { display: grid; gap: 2px; margin: var(--sp-3) 0 0; }
+.spec-note b { color: var(--code-accent); font-size: 11.5px; }
+.deep-dive { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px dashed var(--line); }
+.deep-dive h3 { margin: 0 0 var(--sp-2); font-size: 15px; }
+.deep-dive p { margin: 0 0 var(--sp-2); color: var(--muted); font-size: 14.5px; line-height: 1.8; }
+.deep-dive p:last-child { margin-bottom: 0; }
 /* ---------- 概念图解：内联 SVG，跟随主题变量 ---------- */
 .figure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-3); }
 .figure-item { margin: 0; padding: var(--sp-3); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }

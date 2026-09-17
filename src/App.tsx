@@ -791,6 +791,20 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
         return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3 id={`concept-${index + 1}`} tabIndex={-1}>{read(block.heading, locale)}<AnchorButton target={`concept-${index + 1}`} label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3><p>{read(block.body, locale)}</p>{block.principle && <p className="callout concept-principle" data-tone="info"><b>{zh ? "规范怎么说" : "What the spec says"}</b>{read(block.principle, locale)}</p>}{point && <div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div>}{block.why && <p className="concept-why"><b>{zh ? "为什么" : "Why"}</b>{read(block.why, locale)}</p>}{block.snippet && <div className="code-block concept-snippet"><div>{zh ? "最小示例" : "Minimal example"}</div><pre><code>{block.snippet}</code></pre></div>}{block.pitfall && <p className="callout concept-pitfall" data-tone="warn"><b>{zh ? "容易踩坑" : "Watch out"}</b>{read(block.pitfall, locale)}</p>}{block.analogy && <p className="concept-analogy"><b>{zh ? "打个比方" : "Think of it as"}</b>{read(block.analogy, locale)}</p>}{block.demoHint && <p className="concept-demohint" data-step="03"><b>{zh ? "在演示里验证" : "Prove it in the demo"}</b>{read(block.demoHint, locale)}</p>}{block.refs && block.refs.length > 0 && <p className="concept-refs">{zh ? "延伸阅读" : "Further reading"}{block.refs.map((ref) => <a href={ref.href} target="_blank" rel="noreferrer" key={ref.href} data-kind={ref.kind || "docs"} title={read(REF_KIND[ref.kind || "docs"], locale)}>{ref.label}</a>)}</p>}</div></section>;
       })}
     </section>
+    {lesson.spec && <section className="learning-block spec-block" id="spec" tabIndex={-1}>
+      <span className="step-label">{zh ? "规范原文" : "From the spec"}</span>
+      <h2>{zh ? "这一章的结论从哪来" : "Where this chapter's claims come from"}<AnchorButton target="spec" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <blockquote className="spec-quote">
+        <p>{read(lesson.spec.quote, locale)}</p>
+        {zh && lesson.spec.quoteZh && <p className="spec-quote-zh">{read(lesson.spec.quoteZh, locale)}</p>}
+        <cite>{lesson.spec.source}</cite>
+      </blockquote>
+      <p className="spec-note"><b>{zh ? "怎么读这段" : "How to read it"}</b>{read(lesson.spec.note, locale)}</p>
+      {lesson.deepDive && lesson.deepDive.length > 0 && <div className="deep-dive">
+        <h3>{zh ? "再往深一层" : "One level deeper"}</h3>
+        {lesson.deepDive.map((paragraph) => <p key={paragraph.zh}>{read(paragraph, locale)}</p>)}
+      </div>}
+    </section>}
     {lesson.figures && lesson.figures.length > 0 && <section className="learning-block figure-block" id="figures" tabIndex={-1}>
       <h2>{zh ? "概念图解" : "Figures"}<AnchorButton target="figures" label={zh ? "定位到本节" : "Focus this section"} /></h2>
       <p>{zh ? "每一张图对应上面某个概念的判断依据；看图时先自己说出结论，再回到正文核对措辞。" : "Each figure carries the reasoning behind one of the concepts above. Name the conclusion yourself first, then check the wording in the text."}</p>
