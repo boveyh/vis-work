@@ -383,6 +383,12 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .related-topics li { display: grid; gap: 2px; padding: var(--sp-3) var(--sp-4); border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: var(--surface-2); }
 .related-topics a { color: var(--code-accent); font-weight: 600; }
 .related-topics span { color: var(--muted); font-size: 14px; line-height: 1.7; }
+.export-actions { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0; padding: var(--sp-3) var(--sp-4); border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.export-hint { margin: 0; font-size: 14.5px; line-height: 1.75; }
+.export-buttons { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.export-buttons .button { text-decoration: none; }
+.export-buttons .button.ghost { background: none; color: var(--accent-dark); border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.export-meta { margin: 0; color: var(--muted); font-size: 12.5px; }
 /* ---------- 专题页与关于页扩展 ---------- */
 .topic-main { padding-bottom: var(--sp-6); }
 .topic-meta { display: flex; gap: var(--sp-4); margin-top: var(--sp-2); color: var(--muted); font-size: 13px; }

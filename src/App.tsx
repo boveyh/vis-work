@@ -794,6 +794,56 @@ const REF_KIND: Record<string, { zh: string; en: string }> = {
   docs: { zh: "手册", en: "docs" },
 };
 
+/* 把一章的 HTML 与 CSS 组装成一个可直接双击打开的独立文件（与课程内容同源） */
+function lessonBundle(lesson: Lesson, locale: Locale): string {
+  const zh = locale === "zh";
+  return `<!doctype html>
+<html lang="${zh ? "zh-CN" : "en"}">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${read(lesson.title, locale)} · Layout Lab</title>
+<style>
+body { margin: 0; background: #f3f0e9; color: #172033; font: 16px/1.6 "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+.page { width: min(100% - 32px, 960px); margin-inline: auto; padding: 32px 0 64px; }
+h1 { font-size: 24px; margin: 0 0 24px; }
+${lesson.css}
+</style>
+</head>
+<body>
+<div class="page">
+<h1>${read(lesson.title, locale)}</h1>
+${lesson.html}
+</div>
+</body>
+</html>`;
+}
+
+function ExportActions({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
+  const zh = locale === "zh";
+  const [state, setState] = useState<"idle" | "ok" | "fail">("idle");
+  const bundle = lessonBundle(lesson, locale);
+  const filename = `layout-lab-${lesson.id}.html`;
+  const copy = async () => {
+    const text = `<!-- ${read(lesson.title, locale)} · Layout Lab -->\n${lesson.html}\n\n/* CSS */\n${lesson.css}\n`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setState("ok");
+    } catch {
+      setState("fail");
+    }
+    window.setTimeout(() => setState("idle"), 2600);
+  };
+  return <div className="export-actions" data-lesson={lesson.id}>
+    <p className="export-hint">{zh ? "把这一章的示例带走：复制代码，或下载成一个能直接双击打开的独立页面。" : "Take this chapter's example with you: copy the code, or download it as a standalone page you can open by double-clicking."}</p>
+    <div className="export-buttons">
+      <button type="button" className="button" onClick={copy}>{state === "ok" ? (zh ? "已复制到剪贴板" : "Copied") : state === "fail" ? (zh ? "复制失败，请手动选择" : "Copy failed, select manually") : (zh ? "复制 HTML 与 CSS" : "Copy HTML and CSS")}</button>
+      <a className="button ghost" href={`data:text/html;charset=utf-8,${encodeURIComponent(bundle)}`} download={filename}>{zh ? "下载本章示例（.html）" : "Download this example (.html)"}</a>
+    </div>
+    <p className="export-meta">{zh ? `文件名 ${filename} · 内含本章 HTML、CSS 与一份最小页面骨架，离线可用。` : `File ${filename} · contains this chapter's HTML, CSS and a minimal page shell; works offline.`}</p>
+  </div>;
+}
+
 function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
   const task = taskFor(lesson);
   const zh = locale === "zh";
@@ -903,7 +953,7 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
       <div className="demo-brief"><span className="step-label">03 · {locale === "zh" ? "带着任务操作" : "Operate with a task"}</span><h2>{read(task.title, locale)}</h2><p>{read(task.brief, locale)}</p><div className="task-levels"><span><b>1</b>{locale === "zh" ? "跟做：对照目标调整参数" : "Follow: match the target"}</span><span><b>2</b>{locale === "zh" ? "排错：根据未满足条件修正" : "Debug: fix unmet conditions"}</span><span><b>3</b>{locale === "zh" ? "迁移：用观察结果回答下一题" : "Transfer: answer from the result"}</span></div><strong>{locale === "zh" ? "不要靠试遍所有选项。每次只改一个参数，说清它改变的是方向、分布、尺寸还是间距。" : "Do not brute-force every option. Change one control at a time and name whether it affects direction, distribution, size or spacing."}</strong></div>
       <div className="board-pointer"><ArrowRight />{locale === "zh" ? "在右侧同步教学板中完成操作" : "Complete the task in the synchronized board"}</div>
     </section>
-    <details className="full-code"><summary>{locale === "zh" ? "查看完整 HTML 与 CSS" : "View full HTML and CSS"}</summary><div className="code-block"><div>HTML</div><pre><code>{lesson.html}</code></pre></div><div className="code-block accent-code"><div>CSS</div><pre><code>{lesson.css}</code></pre></div></details>
+    <details className="full-code"><summary>{locale === "zh" ? "查看完整 HTML 与 CSS" : "View full HTML and CSS"}</summary><ExportActions lesson={lesson} locale={locale} /><div className="code-block"><div>HTML</div><pre><code>{lesson.html}</code></pre></div><div className="code-block accent-code"><div>CSS</div><pre><code>{lesson.css}</code></pre></div></details>
   </>;
 }
 
