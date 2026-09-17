@@ -759,6 +759,7 @@ function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson;
       <h2>{read(lesson.goal, locale)}</h2>
       <p>{read(lesson.summary, locale)} {locale === "zh" ? "下面四步先建立判断，再用同一个演示验证，最后把观察结果用于练习。" : "The four steps below build the idea, verify it in one demo, and reuse the observation in a short exercise."}</p>
       {lesson.scenario && <p className="callout scenario-callout" data-tone="info"><b>{locale === "zh" ? "真实场景" : "In the wild"}</b>{read(lesson.scenario, locale)}</p>}
+      {lesson.caseStudy && <div className="case-study"><h3>{locale === "zh" ? "本章贯穿案例" : "The case behind this chapter"}</h3><p>{read(lesson.caseStudy, locale)}</p></div>}
     </section>
     <section className="learning-block prediction-block" id="step-prediction" tabIndex={-1}>
       <span className="step-label">01 · {locale === "zh" ? "建立初始判断" : "Make an initial judgement"}</span>
@@ -771,6 +772,13 @@ function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson;
 }
 
 /* Steps 02 and 03: reading order and the hands-on brief that points at the synchronized board. */
+const REF_KIND: Record<string, { zh: string; en: string }> = {
+  spec: { zh: "规范原文", en: "spec" },
+  paper: { zh: "经典文献", en: "paper" },
+  article: { zh: "工程文章", en: "article" },
+  docs: { zh: "手册", en: "docs" },
+};
+
 function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
   const task = taskFor(lesson);
   const zh = locale === "zh";
@@ -779,10 +787,26 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
       <div className="sequence-heading"><span className="step-label">02 · {locale === "zh" ? "把原理连起来" : "Connect the ideas"}</span><h2>{locale === "zh" ? "从结构到规则，按顺序理解" : "Follow the reasoning from structure to rule"}<AnchorButton target="step-concepts" label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h2><p>{locale === "zh" ? "每一步只回答一个问题。后一步会使用前一步的结论。" : "Each step answers one question and uses the conclusion before it."}</p></div>
       {lesson.theory.map((block, index) => {
         const point = keyPointFor(lesson, block);
-        return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3 id={`concept-${index + 1}`} tabIndex={-1}>{read(block.heading, locale)}<AnchorButton target={`concept-${index + 1}`} label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3><p>{read(block.body, locale)}</p>{point && <div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div>}{block.why && <p className="concept-why"><b>{zh ? "为什么" : "Why"}</b>{read(block.why, locale)}</p>}{block.snippet && <div className="code-block concept-snippet"><div>{zh ? "最小示例" : "Minimal example"}</div><pre><code>{block.snippet}</code></pre></div>}{block.pitfall && <p className="callout concept-pitfall" data-tone="warn"><b>{zh ? "容易踩坑" : "Watch out"}</b>{read(block.pitfall, locale)}</p>}{block.refs && block.refs.length > 0 && <p className="concept-refs">{zh ? "延伸阅读" : "Further reading"}{block.refs.map((ref) => <a href={ref.href} target="_blank" rel="noreferrer" key={ref.href}>{ref.label}</a>)}</p>}</div></section>;
+        return <section className="learning-block concept-step" key={block.heading.zh}><span>{String(index + 1).padStart(2, "0")}</span><div><h3 id={`concept-${index + 1}`} tabIndex={-1}>{read(block.heading, locale)}<AnchorButton target={`concept-${index + 1}`} label={locale === "zh" ? "定位到本节" : "Focus this section"} /></h3><p>{read(block.body, locale)}</p>{block.principle && <p className="callout concept-principle" data-tone="info"><b>{zh ? "规范怎么说" : "What the spec says"}</b>{read(block.principle, locale)}</p>}{point && <div className="focus-rule"><code>{point.term}</code><span>{read(point.desc, locale)}</span></div>}{block.why && <p className="concept-why"><b>{zh ? "为什么" : "Why"}</b>{read(block.why, locale)}</p>}{block.snippet && <div className="code-block concept-snippet"><div>{zh ? "最小示例" : "Minimal example"}</div><pre><code>{block.snippet}</code></pre></div>}{block.pitfall && <p className="callout concept-pitfall" data-tone="warn"><b>{zh ? "容易踩坑" : "Watch out"}</b>{read(block.pitfall, locale)}</p>}{block.analogy && <p className="concept-analogy"><b>{zh ? "打个比方" : "Think of it as"}</b>{read(block.analogy, locale)}</p>}{block.demoHint && <p className="concept-demohint" data-step="03"><b>{zh ? "在演示里验证" : "Prove it in the demo"}</b>{read(block.demoHint, locale)}</p>}{block.refs && block.refs.length > 0 && <p className="concept-refs">{zh ? "延伸阅读" : "Further reading"}{block.refs.map((ref) => <a href={ref.href} target="_blank" rel="noreferrer" key={ref.href} data-kind={ref.kind || "docs"} title={read(REF_KIND[ref.kind || "docs"], locale)}>{ref.label}</a>)}</p>}</div></section>;
       })}
     </section>
     <section className="learning-block mistake-block callout" data-tone="warn"><h3 className="callout-title"><Lightbulb weight="fill" />{read(ui.mistakes, locale)}</h3><ul>{lesson.mistakes.map((mistake) => <li key={mistake.zh}>{read(mistake, locale)}</li>)}</ul></section>
+    {lesson.counterExamples && lesson.counterExamples.length > 0 && <section className="learning-block counter-block" id="counter-examples" tabIndex={-1}>
+      <span className="step-label">{zh ? "反例剖析" : "Counter examples"}</span>
+      <h2>{zh ? "先看现象，再找根因" : "Read the symptom, then the cause"}<AnchorButton target="counter-examples" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <p>{zh ? "下面每一段代码都能正常渲染，也都有人这样写过。判断对错靠的不是记忆，而是知道它违反了哪条规则。" : "Every snippet below renders without an error and someone shipped it. Telling right from wrong depends on knowing which rule it breaks, not on memory."}</p>
+      {lesson.counterExamples.map((item) => <article className="counter-example" key={item.title.zh}>
+        <h3>{read(item.title, locale)}</h3>
+        {item.html && <div className="code-block"><div>HTML</div><pre><code>{item.html}</code></pre></div>}
+        <div className="code-block accent-code"><div>CSS</div><pre><code>{item.css}</code></pre></div>
+        <dl className="counter-rows">
+          <div><dt>{zh ? "现象" : "Symptom"}</dt><dd>{read(item.symptom, locale)}</dd></div>
+          <div><dt>{zh ? "根因" : "Root cause"}</dt><dd>{read(item.cause, locale)}</dd></div>
+          <div><dt>{zh ? "修法" : "Fix"}</dt><dd>{read(item.fix, locale)}</dd></div>
+          <div><dt>{zh ? "为什么难察觉" : "Why it hides"}</dt><dd>{read(item.whyHidden, locale)}</dd></div>
+        </dl>
+      </article>)}
+    </section>}
     <section className="learning-block property-table" id="keypoints" tabIndex={-1}>
       <h2>{zh ? "属性速查" : "Property reference"}<AnchorButton target="keypoints" label={zh ? "定位到本节" : "Focus this section"} /></h2>
       <div className="table-scroll">
@@ -804,6 +828,23 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
         <tbody>{toolChoices().map((row) => <tr key={row.tool}><td>{read(row.need, locale)}</td><td><code>{row.tool}</code></td><td>{read(row.reason, locale)}</td></tr>)}</tbody>
       </table></div>}
     </section>
+    {(lesson.focus || lesson.difficulty || lesson.examPoints) && <section className="learning-block teaching-notes" id="teaching-notes" tabIndex={-1}>
+      <span className="step-label">{zh ? "教师视角" : "For teachers"}</span>
+      <h2>{zh ? "这一章的重点、难点与考察点" : "Focus, difficulty and assessment"}<AnchorButton target="teaching-notes" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <div className="teaching-grid">
+        {lesson.focus && <div className="teaching-col"><h3>{zh ? "本章重点" : "Key points"}</h3><ul>{lesson.focus.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul></div>}
+        {lesson.difficulty && <div className="teaching-col"><h3>{zh ? "难点在哪" : "Where it gets hard"}</h3><ul>{lesson.difficulty.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul></div>}
+        {lesson.examPoints && <div className="teaching-col"><h3>{zh ? "可以这样考" : "Ways to assess"}</h3><ul>{lesson.examPoints.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul></div>}
+      </div>
+    </section>}
+    {lesson.glossary && lesson.glossary.length > 0 && <section className="learning-block glossary-block" id="glossary" tabIndex={-1}>
+      <h2>{zh ? "本章术语表" : "Glossary"}<AnchorButton target="glossary" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <dl className="glossary-grid">{lesson.glossary.map((entry) => <div key={entry.term}><dt><code>{entry.term}</code></dt><dd>{read(entry.def, locale)}{entry.source && <em>{entry.source}</em>}</dd></div>)}</dl>
+    </section>}
+    {lesson.bibliography && lesson.bibliography.length > 0 && <section className="learning-block bibliography-block" id="bibliography" tabIndex={-1}>
+      <h2>{zh ? "本章依据与延伸文献" : "Sources behind this chapter"}<AnchorButton target="bibliography" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <ul className="bibliography-list">{lesson.bibliography.map((ref) => <li key={ref.href} data-kind={ref.kind || "docs"}><span>{read(REF_KIND[ref.kind || "docs"], locale)}</span><a href={ref.href} target="_blank" rel="noreferrer">{ref.label}</a></li>)}</ul>
+    </section>}
     <section className="demo-lesson-block demo-instructions" id="step-task" tabIndex={-1}>
       <div className="demo-brief"><span className="step-label">03 · {locale === "zh" ? "带着任务操作" : "Operate with a task"}</span><h2>{read(task.title, locale)}</h2><p>{read(task.brief, locale)}</p><div className="task-levels"><span><b>1</b>{locale === "zh" ? "跟做：对照目标调整参数" : "Follow: match the target"}</span><span><b>2</b>{locale === "zh" ? "排错：根据未满足条件修正" : "Debug: fix unmet conditions"}</span><span><b>3</b>{locale === "zh" ? "迁移：用观察结果回答下一题" : "Transfer: answer from the result"}</span></div><strong>{locale === "zh" ? "不要靠试遍所有选项。每次只改一个参数，说清它改变的是方向、分布、尺寸还是间距。" : "Do not brute-force every option. Change one control at a time and name whether it affects direction, distribution, size or spacing."}</strong></div>
       <div className="board-pointer"><ArrowRight />{locale === "zh" ? "在右侧同步教学板中完成操作" : "Complete the task in the synchronized board"}</div>

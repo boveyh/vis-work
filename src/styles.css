@@ -327,6 +327,44 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .concept-refs a:hover { border-color: var(--code-accent); }
 .scenario-callout { display: grid; gap: 2px; margin-top: var(--sp-3); }
 .scenario-callout b { color: var(--navy); font-size: 11.5px; }
+/* ---------- theory layer：规范出处 / 类比 / 演示指引 / 反例 / 教师视角 / 术语 / 文献 ---------- */
+.callout.concept-principle { display: grid; gap: 2px; margin: var(--sp-3) 0 0; border-left-color: var(--code-accent); background: color-mix(in srgb, var(--code-accent) 7%, var(--surface)); }
+.callout.concept-principle b { color: var(--code-accent); font-size: 11.5px; }
+.concept-analogy { display: grid; gap: 2px; margin: var(--sp-3) 0 0; padding-left: var(--sp-3); border-left: 2px dashed var(--line); color: var(--muted); }
+.concept-analogy b { color: var(--text); font-size: 11.5px; }
+.concept-demohint { display: grid; gap: 2px; margin: var(--sp-3) 0 0; padding: var(--sp-2) var(--sp-3); border: 1px dashed color-mix(in srgb, var(--accent) 48%, var(--line)); border-radius: 8px; background: color-mix(in srgb, var(--accent) 5%, var(--surface)); font-size: 14px; }
+.concept-demohint b { color: var(--accent-dark); font-size: 11.5px; }
+.concept-refs a[data-kind="spec"] { border-color: color-mix(in srgb, var(--code-accent) 45%, var(--line)); color: var(--code-accent); }
+.concept-refs a[data-kind="paper"] { border-color: color-mix(in srgb, var(--tone-4) 45%, var(--line)); color: var(--tone-4); }
+.concept-refs a[data-kind="article"] { border-color: color-mix(in srgb, var(--success) 45%, var(--line)); color: var(--success); }
+.case-study { margin-top: var(--sp-3); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-left: 3px solid var(--tone-2); border-radius: 10px; background: var(--surface); }
+.case-study h3 { margin: 0 0 var(--sp-1); font-size: 14px; }
+.case-study p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.7; }
+.counter-example { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
+.counter-example h3 { margin: 0 0 var(--sp-3); font-size: 16px; }
+.counter-example .code-block:first-of-type { margin-top: 0; }
+.counter-rows { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0 0; }
+.counter-rows > div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: var(--sp-3); padding-bottom: var(--sp-2); border-bottom: 1px dashed color-mix(in srgb, var(--line) 70%, transparent); }
+.counter-rows > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.counter-rows dt { color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.counter-rows dd { margin: 0; font-size: 14.5px; line-height: 1.7; }
+.teaching-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-3); }
+.teaching-col { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.teaching-col h3 { margin: 0 0 var(--sp-2); font-size: 13.5px; }
+.teaching-col ul { margin: 0; padding-left: var(--sp-4); color: var(--muted); font-size: 14px; line-height: 1.75; }
+.glossary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-3); margin: var(--sp-3) 0 0; }
+.glossary-grid > div { padding: var(--sp-3); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.glossary-grid dt { margin-bottom: var(--sp-1); }
+.glossary-grid dt code { font: 600 13px ui-monospace, monospace; color: var(--code-accent); }
+.glossary-grid dd { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.glossary-grid dd em { display: block; margin-top: var(--sp-1); color: var(--text); font-size: 12px; font-style: normal; opacity: .75; }
+.bibliography-list { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0 0; padding: 0; list-style: none; }
+.bibliography-list li { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: baseline; gap: var(--sp-3); font-size: 14px; }
+.bibliography-list li > span { padding: 2px 6px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 11.5px; text-align: center; }
+.bibliography-list li[data-kind="spec"] > span { border-color: color-mix(in srgb, var(--code-accent) 45%, var(--line)); color: var(--code-accent); }
+.bibliography-list li[data-kind="paper"] > span { border-color: color-mix(in srgb, var(--tone-4) 45%, var(--line)); color: var(--tone-4); }
+.bibliography-list li[data-kind="article"] > span { border-color: color-mix(in srgb, var(--success) 45%, var(--line)); color: var(--success); }
+.bibliography-list a { color: var(--code-accent); overflow-wrap: anywhere; }
 .lesson-checklist { margin-top: var(--sp-5); padding: var(--sp-4) var(--sp-5); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .lesson-checklist h3 { margin: 0 0 var(--sp-2); font-size: 15px; }
 .lesson-checklist ul { margin: 0; padding-left: var(--sp-5); color: var(--muted); font-size: 14.5px; line-height: 1.8; }
