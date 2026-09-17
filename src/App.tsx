@@ -861,7 +861,7 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
             <p className="walkthrough-situation">{read(block.walkthrough.situation, locale)}</p>
             <ol className="walkthrough-steps">{block.walkthrough.steps.map((step) => <li key={step.zh}>{read(step, locale)}</li>)}</ol>
             <p className="walkthrough-result"><b>{zh ? "结果" : "Result"}</b>{read(block.walkthrough.result, locale)}</p>
-          </div>}{block.demoHint && <p className="concept-demohint" data-step="03"><b>{zh ? "在演示里验证" : "Prove it in the demo"}</b>{read(block.demoHint, locale)}</p>}{block.refs && block.refs.length > 0 && <p className="concept-refs">{zh ? "延伸阅读" : "Further reading"}{block.refs.map((ref) => <a href={ref.href} target="_blank" rel="noreferrer" key={ref.href} data-kind={ref.kind || "docs"} title={read(REF_KIND[ref.kind || "docs"], locale)}>{ref.label}</a>)}</p>}</div></section>;
+          </div>}{block.demoHint && <p className="concept-demohint" data-step="03"><b>{zh ? "在演示里验证" : "Prove it in the demo"}</b>{read(block.demoHint, locale)}</p>}{block.variants && block.variants.length > 0 && <dl className="concept-variants">{block.variants.map((item) => <div key={item.label.zh}><dt>{read(item.label, locale)}</dt><dd>{read(item.note, locale)}</dd></div>)}</dl>}{block.refs && block.refs.length > 0 && <p className="concept-refs">{zh ? "延伸阅读" : "Further reading"}{block.refs.map((ref) => <a href={ref.href} target="_blank" rel="noreferrer" key={ref.href} data-kind={ref.kind || "docs"} title={read(REF_KIND[ref.kind || "docs"], locale)}>{ref.label}</a>)}</p>}</div></section>;
       })}
     </section>
     {lesson.spec && <section className="learning-block spec-block" id="spec" tabIndex={-1}>
