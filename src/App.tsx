@@ -330,33 +330,149 @@ function ConceptPlayground({ lesson, locale, onChange }: { lesson: Lesson; local
     <div className="control-actions"><button className="text-button" onClick={() => update(initialDemo)}>{read(ui.reset, locale)}</button><button className="text-button" onClick={copy}><Copy />{copied ? read(ui.copied, locale) : read(ui.copy, locale)}</button></div>
   </div>;
 }
+/* 首页「三个真问题」：指针移上去当场演示，点进去是对应章节 */
+const PAIN = [
+  {
+    figure: "pain-margin",
+    lessonId: "box-model",
+    title: t("24 + 24 并不等于 48", "24 + 24 is not 48"),
+    note: t("相邻块的上下外边距会折叠成较大的那一个，而不是相加。指针移上去看它折叠。", "The vertical margins of adjacent blocks collapse into the larger one instead of adding up. Hover to watch it."),
+    gain: t("把间距交给一个方向", "Give spacing one direction"),
+  },
+  {
+    figure: "pain-sticky",
+    lessonId: "positioning",
+    title: t("吸顶表头被推下一个导航的高度", "A sticky header pushed down a whole navbar"),
+    note: t("祖先上的 overflow: hidden 让容器变成了滚动容器，top 的参照随之改变。", "overflow: hidden on an ancestor turns it into a scroll container, and that changes what top references."),
+    gain: t("先认清参照物", "Identify the reference first"),
+  },
+  {
+    figure: "pain-reflow",
+    lessonId: "responsive",
+    title: t("320px 被一条长链接撑破", "A long link bursts a 320px container"),
+    note: t("定宽容器加上不可断行的长串，就是横向滚动的配方；overflow-wrap 才是解药。", "A fixed container plus an unbreakable string is the recipe for sideways scrolling; overflow-wrap is the cure."),
+    gain: t("让内容自己换行", "Let the content wrap itself"),
+  },
+];
+
+/* hero 示意板：三态交叉淡入 + 悬停停住 + 暂停/重播（动画全在 CSS 里，这里只管状态） */
+function HeroBoard({ locale, paused, onToggle, onReplay, replay }: { locale: Locale; paused: boolean; onToggle: () => void; onReplay: () => void; replay: number }) {
+  const zh = locale === "zh";
+  const states = [
+    { id: "flow", name: zh ? "普通流" : "Normal flow", note: zh ? "每个块级盒占一行" : "one row per block" },
+    { id: "flex", name: "Flex", note: zh ? "一行排列，gap 只留空隙" : "one row, gap in between" },
+    { id: "grid", name: "Grid", note: zh ? "三列两行，轨道决定位置" : "three tracks, two rows" },
+  ];
+  const board = FIGURES["home-board"].svg.replace('role="img" ', "").replace("<svg ", '<svg aria-hidden="true" focusable="false" ');
+  return <figure className="hero-board-figure" data-paused={paused ? "true" : "false"}>
+    <div className="hero-board-frame" key={replay} dangerouslySetInnerHTML={{ __html: board }} />
+    <ul className="hero-board-states">
+      {states.map((state, index) => <li className={`hero-state-chip chip-${index}`} key={state.id}><strong>{state.name}</strong><span>{state.note}</span></li>)}
+    </ul>
+    <figcaption className="hero-board-note">
+      <span>{zh ? "同一份 HTML，三种排布。指针移上去就停住，可以看清每个盒。" : "One piece of HTML, three arrangements. Point at it to stop and look."}</span>
+      <span className="hero-board-actions">
+        <button type="button" className="text-button" aria-pressed={paused} onClick={onToggle}>{paused ? (zh ? "继续" : "Play") : (zh ? "暂停" : "Pause")}</button>
+        <button type="button" className="text-button" onClick={onReplay}>{zh ? "重播" : "Replay"}</button>
+      </span>
+    </figcaption>
+  </figure>;
+}
+
 function Home() {
   const locale = localeOf(useParams().locale);
   const zh = locale === "zh";
   const { done, practiced, chapterPassed, stagePassed, completedCount, totalCount, nextHref } = useProgress();
+  const [boardPaused, setBoardPaused] = useState(false);
+  const [replay, setReplay] = useState(0);
   const nextParts = nextHref.match(/\/lesson\/([^?]+)/);
   const nextLesson = lessons.find((item) => item.id === nextParts?.[1]) ?? lessons[0];
 
   return <Shell>
     <main className="dashboard-home">
-      <section className="learning-dashboard">
-        <div className="dashboard-summary">
-          <p>{zh ? "前端布局学习路径" : "Front-end layout path"}</p>
-          <h1>{zh ? "接着上次的位置继续" : "Continue where you left off"}</h1>
-          <span>{zh ? `已完成 ${completedCount} / ${totalCount} 章` : `${completedCount} of ${totalCount} lessons complete`}</span>
+      <section className="hero home-hero">
+        <div className="hero-copy">
+          <p className="eyebrow">{zh ? "前端布局学习路径" : "Front-end layout path"}</p>
+          <h1>{zh ? "把布局从“试出来”变成“算出来”" : "Turn layout from guesswork into arithmetic"}</h1>
+          <p className="hero-sub">{zh ? "八章从文档流一路讲到响应式项目：每节都配可跑示例、规范原文、图解与常见错解；四个专题再把格式化上下文、间距节奏、调试方法和可访问性挖到底。" : "Eight chapters run from normal flow to a responsive project, each with a runnable example, the spec quote, a diagram and the usual wrong answers. Four deep dives take contexts, spacing, debugging and accessibility all the way down."}</p>
           <ul className="course-stats">
             <li><strong>{lessons.length}</strong><span>{zh ? "章" : "chapters"}</span></li>
             <li><strong>{stages.length}</strong><span>{zh ? "阶段" : "stages"}</span></li>
             <li><strong>{totalQuestionCount}</strong><span>{zh ? "道题" : "questions"}</span></li>
             <li><strong>{zh ? "中 / EN" : "ZH / EN"}</strong><span>{zh ? "双语同源" : "shared IDs"}</span></li>
           </ul>
+          <div className="hero-actions">
+            <Link className="button" to={`/${locale}${nextHref}`}>{completedCount ? read(ui.continue, locale) : read(ui.start, locale)}<ArrowRight /></Link>
+            <Link className="text-link" to={`/${locale}/course`}>{read(ui.navCourse, locale)}<ArrowRight /></Link>
+            <Link className="text-link" to={`/${locale}/topics`}>{zh ? "四篇专题" : "Four deep dives"}<ArrowRight /></Link>
+          </div>
         </div>
+        <div className="hero-demo">
+          <HeroBoard locale={locale} paused={boardPaused} onToggle={() => setBoardPaused((value) => !value)} onReplay={() => setReplay((value) => value + 1)} replay={replay} />
+        </div>
+      </section>
+
+      <section className="resume-strip">
+        <div className="dashboard-summary">
+          <span className="resume-label">{completedCount ? (zh ? "继续学习" : "Continue") : (zh ? "从这里开始" : "Start here")}</span>
+          <h2>{zh ? "接着上次的位置继续" : "Continue where you left off"}</h2>
+          <span className="resume-progress-text">{zh ? `已完成 ${completedCount} / ${totalCount} 章` : `${completedCount} of ${totalCount} lessons complete`}</span>
+        </div>
+        <ResumeRing ratio={totalCount ? completedCount / totalCount : 0} locale={locale} />
         <div className="next-task">
-          <span>{completedCount ? (zh ? "继续学习" : "Continue") : (zh ? "从这里开始" : "Start here")}</span>
-          <strong>{String(nextLesson.order).padStart(2, "0")} · {read(nextLesson.title, locale)}</strong>
+          <span>{String(nextLesson.order).padStart(2, "0")} · {read(nextLesson.title, locale)}</span>
           <p>{read(nextLesson.summary, locale)}</p>
           <small>{read(nextLesson.duration, locale)}</small>
-          <Link className="button" to={`/${locale}${nextHref}`}>{completedCount ? read(ui.continue, locale) : read(ui.start, locale)}<ArrowRight /></Link>
+          <Link className="button compact" to={`/${locale}${nextHref}`}>{completedCount ? read(ui.continue, locale) : read(ui.start, locale)}<ArrowRight /></Link>
+        </div>
+      </section>
+
+      <section className="stage-track-section">
+        <div className="section-heading"><h2>{zh ? "四个阶段，八章连成一条线" : "Four stages, eight chapters in one line"}</h2><p>{zh ? "每个阶段两章，先学后测：章末小测通过后，阶段综合测试才会开放。" : "Two chapters per stage, then a test: passing both chapter quizzes unlocks that stage's ten questions."}</p></div>
+        <ol className="stage-track">
+          {stages.map((stage, index) => {
+            const items = lessons.filter((item) => item.stage === stage.key);
+            const passed = items.filter((item) => chapterPassed.includes(item.id)).length;
+            const open = items.every((item) => chapterPassed.includes(item.id));
+            return <li className={`stage-card ${stagePassed.includes(stage.key) ? "is-passed" : open ? "is-open" : ""}`} key={stage.key}>
+              <span className="stage-index">{String(index + 1).padStart(2, "0")}</span>
+              <strong>{read(stage.name, locale)}</strong>
+              <p>{read(stage.desc, locale)}</p>
+              <span className="stage-count">{zh ? `${passed} / ${items.length} 章通过` : `${passed} / ${items.length} passed`}</span>
+              <div className="stage-progress" aria-hidden="true"><i style={{ width: `${Math.round((passed / items.length) * 100)}%` }} /></div>
+              <ul className="stage-card-chapters">{items.map((item) => <li key={item.id}><Link to={`/${locale}/lesson/${item.id}`}>{String(item.order).padStart(2, "0")} {read(item.title, locale)}</Link></li>)}</ul>
+            </li>;
+          })}
+        </ol>
+      </section>
+
+      <section className="pain-section">
+        <div className="section-heading"><h2>{zh ? "三个真问题：指针移上去看它演一遍" : "Three real problems — hover to watch them"}</h2><p>{zh ? "这些不是边角料，而是每天都会遇到的失败；每张卡都对应一章，也对应一篇专题。" : "Not footnotes: these are the failures you meet daily. Each card points at a chapter and a deep dive."}</p></div>
+        <ul className="pain-cards">
+          {PAIN.map((item) => {
+            const lesson = lessons.find((entry) => entry.id === item.lessonId);
+            return <li className={`pain-card pain-${item.figure}`} key={item.figure}>
+              <div className="pain-stage" dangerouslySetInnerHTML={{ __html: FIGURES[item.figure].svg.replace('role="img" ', "") }} />
+              <strong>{read(item.title, locale)}</strong>
+              <p>{read(item.note, locale)}</p>
+              <div className="pain-foot">
+                <span className="pain-gain">{read(item.gain, locale)}</span>
+                {lesson && <Link className="text-link" to={`/${locale}/lesson/${lesson.id}`}>{read(lesson.title, locale)}<ArrowRight /></Link>}
+              </div>
+            </li>;
+          })}
+        </ul>
+      </section>
+
+      <section className="topic-strip">
+        <div className="section-heading"><h2>{zh ? "四篇专题深挖" : "Four deep dives"}</h2><p>{zh ? "课程之外的另一条线：每篇把一类系统性问题挖到底，可以单独读，也可以当章节的延伸。" : "A second thread beyond the chapters: each one works a class of systemic problem to the bottom, readable on its own."}</p></div>
+        <div className="topic-cards">
+          {topics.map((topic, index) => <Link className="topic-card" to={`/${locale}/topics/${topic.id}`} key={topic.id}>
+            <span className="topic-card-num">{String(index + 1).padStart(2, "0")}</span>
+            <h3>{read(topic.title, locale)}</h3>
+            <p>{read(topic.summary, locale)}</p>
+            <span className="topic-card-meta">{read(topic.minutes, locale)} · {zh ? `${topic.sections.length} 节` : `${topic.sections.length} sections`}</span>
+          </Link>)}
         </div>
       </section>
 
@@ -367,6 +483,17 @@ function Home() {
     </main>
     <Footer locale={locale} />
   </Shell>;
+}
+
+/* 进度环：stroke-dashoffset 表示完成度，进入时从 0 画到当前值（动画写在 CSS 里） */
+function ResumeRing({ ratio, locale }: { ratio: number; locale: Locale }) {
+  const zh = locale === "zh";
+  const length = 2 * Math.PI * 26;
+  const pct = Math.round(ratio * 100);
+  return <div className="resume-ring" style={{ "--ring-full": `${length}`, "--ring-done": `${length * (1 - ratio)}` } as CSSProperties} role="img" aria-label={zh ? `课程完成度 ${pct}%` : `${pct}% of the course complete`}>
+    <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><circle className="ring-track" cx="32" cy="32" r="26" /><circle className="ring-value" cx="32" cy="32" r="26" /></svg>
+    <span>{pct}%</span>
+  </div>;
 }
 
 function ChapterList({ locale, done, practiced, chapterPassed, stagePassed }: { locale: Locale; done: string[]; practiced: string[]; chapterPassed: string[]; stagePassed: string[] }) {

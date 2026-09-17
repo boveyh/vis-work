@@ -339,5 +339,104 @@ export const FIGURES: Record<string, { svg: string; label: { zh: string; en: str
       <text class="fig-muted" x="20" y="236">移动端整页骨架用 dvh + 1fr 中间行，比 100vh 稳</text>
     </svg>`,
   },
+  /* 首页 hero：同一组方块在普通流 / Flex / Grid 三种排布下的三态（三组叠放，由 CSS 交叉淡入） */
+  "home-board": {
+    label: { zh: "同一组方块的三种排布", en: "One set of boxes, three arrangements" },
+    svg: `<svg ${VB} class="hero-board">
+      <title>普通流：每个块级盒占一行；Flex：一行排列并用 gap 分配间距；Grid：三列两行的轨道网格</title>
+      <g class="hero-state" data-state="flow">
+        <rect class="hero-block" x="40" y="14" width="480" height="26" rx="6" />
+        <rect class="hero-block" x="40" y="50" width="480" height="26" rx="6" />
+        <rect class="hero-block" x="40" y="86" width="480" height="26" rx="6" />
+        <rect class="hero-block" x="40" y="122" width="480" height="26" rx="6" />
+        <rect class="hero-block" x="40" y="158" width="480" height="26" rx="6" />
+        <rect class="hero-block" x="40" y="194" width="480" height="26" rx="6" />
+        <text class="fig-muted" x="40" y="236">display: block</text>
+      </g>
+      <g class="hero-state" data-state="flex">
+        <line class="fig-arrow" x1="52" y1="34" x2="500" y2="34" />
+        <path class="fig-arrow" d="M500 34 l-8 -5 v10 z" />
+        <rect class="hero-block" x="52" y="64" width="70" height="112" rx="6" />
+        <rect class="hero-block" x="128" y="64" width="70" height="112" rx="6" />
+        <rect class="hero-block" x="204" y="64" width="70" height="112" rx="6" />
+        <rect class="hero-block" x="280" y="64" width="70" height="112" rx="6" />
+        <rect class="hero-block" x="356" y="64" width="70" height="112" rx="6" />
+        <rect class="hero-block" x="432" y="64" width="70" height="112" rx="6" />
+        <rect class="fig-gap" x="122" y="64" width="6" height="112" />
+        <rect class="fig-gap" x="198" y="64" width="6" height="112" />
+        <rect class="fig-gap" x="274" y="64" width="6" height="112" />
+        <rect class="fig-gap" x="350" y="64" width="6" height="112" />
+        <rect class="fig-gap" x="426" y="64" width="6" height="112" />
+        <text class="fig-muted" x="40" y="236">display: flex · justify-content / align-items</text>
+      </g>
+      <g class="hero-state" data-state="grid">
+        <rect class="fig-dash" x="186" y="36" width="0" height="176" />
+        <rect class="fig-dash" x="342" y="36" width="0" height="176" />
+        <rect class="hero-block" x="40" y="44" width="140" height="76" rx="6" />
+        <rect class="hero-block" x="196" y="44" width="140" height="76" rx="6" />
+        <rect class="hero-block" x="352" y="44" width="140" height="76" rx="6" />
+        <rect class="hero-block" x="40" y="140" width="140" height="76" rx="6" />
+        <rect class="hero-block" x="196" y="140" width="140" height="76" rx="6" />
+        <rect class="hero-block" x="352" y="140" width="140" height="76" rx="6" />
+        <text class="fig-muted" x="40" y="236">display: grid · repeat(3, 1fr)</text>
+      </g>
+    </svg>`,
+  },
+  /* 首页痛点 1：相邻上下 margin 折叠 —— 悬停时 48 收成 24 */
+  "pain-margin": {
+    label: { zh: "margin 折叠：48 变 24", en: "Margin collapsing: 48 becomes 24" },
+    svg: `<svg ${VB} class="pain-figure pain-margin">
+      <title>两个块之间的上下外边距会折叠成一个更大的值，而不是相加</title>
+      <rect class="fig-box" x="40" y="24" width="200" height="72" rx="6" />
+      <rect class="fig-margin pain-band" x="40" y="96" width="200" height="72" />
+      <rect class="fig-box" x="40" y="168" width="200" height="72" rx="6" />
+      <text class="fig-text pain-num-a" x="252" y="126">24 + 24</text>
+      <text class="fig-text pain-num-b" x="252" y="126">24</text>
+      <text class="fig-muted" x="252" y="146">margin-bottom + margin-top</text>
+      <text class="fig-note" x="40" y="18">相邻兄弟之间只留较大的那个</text>
+    </svg>`,
+  },
+  /* 首页痛点 2：sticky 的偏移相对最近的滚动容器 —— 悬停时表头从被推下变成贴住 */
+  "pain-sticky": {
+    label: { zh: "sticky 被滚动容器改写参照", en: "Sticky resolves against the wrong container" },
+    svg: `<svg ${VB} class="pain-figure pain-sticky">
+      <title>祖先一旦成为滚动容器，sticky 的 top 相对它解析，表头于是被整体推下</title>
+      <rect class="fig-navy" x="20" y="16" width="520" height="30" rx="6" />
+      <text class="fig-muted" x="34" y="36">nav</text>
+      <g class="pain-head">
+        <rect class="fig-box" x="40" y="54" width="480" height="30" rx="6" />
+        <text class="fig-muted" x="54" y="74">thead</text>
+      </g>
+      <rect class="fig-surface" x="40" y="150" width="480" height="26" rx="4" />
+      <rect class="fig-surface" x="40" y="182" width="480" height="26" rx="4" />
+      <rect class="fig-surface" x="40" y="214" width="480" height="26" rx="4" />
+      <line class="fig-dash pain-gap" x1="530" y1="54" x2="530" y2="110" />
+      <text class="fig-text pain-num-a" x="468" y="126">64</text>
+      <text class="fig-text pain-num-b" x="468" y="126">0</text>
+    </svg>`,
+  },
+  /* 首页痛点 3：320px 下的长串溢出 —— 悬停时长链接换行收进容器 */
+  "pain-reflow": {
+    label: { zh: "320px 下长串撑破容器", en: "A long string bursts a 320px container" },
+    svg: `<svg ${VB} class="pain-figure pain-reflow">
+      <title>定宽容器在窄视口下被不可断行的长串撑破，换行后收回</title>
+      <rect class="fig-box" x="40" y="30" width="220" height="180" rx="8" />
+      <text class="fig-muted" x="52" y="50">320</text>
+      <rect class="fig-surface" x="52" y="62" width="180" height="14" rx="3" />
+      <rect class="fig-surface" x="52" y="86" width="140" height="14" rx="3" />
+      <g class="pain-long">
+        <rect class="fig-warn" x="52" y="120" width="300" height="18" rx="3" />
+        <path class="fig-arrow" d="M352 129 l-10 -6 v12 z" />
+      </g>
+      <g class="pain-wrapped">
+        <rect class="fig-margin" x="52" y="120" width="180" height="18" rx="3" />
+        <rect class="fig-margin" x="52" y="144" width="96" height="18" rx="3" />
+      </g>
+      <text class="fig-note" x="290" y="60">overflow-wrap</text>
+      <text class="fig-muted" x="290" y="80">: anywhere</text>
+    </svg>`,
+  },
 };
+
+
 

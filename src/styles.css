@@ -146,7 +146,7 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .section-heading { display: flex; flex-direction: column; gap: 10px; margin-bottom: 34px; }
 .section-heading h2 { font-size: clamp(24px, 2.6vw, 32px); letter-spacing: -.02em; margin: 0; }
 .section-heading p { color: var(--muted); margin: 0; max-width: 64ch; line-height: 1.7; }
-.stage-track { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 0; padding: 0; }
+.stage-track { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; }
 .stage-track > li { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 8px; }
 .stage-index { font: 700 12px ui-monospace, monospace; color: var(--accent); }
 .stage-track strong { font-size: 17px; }
@@ -240,19 +240,83 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .challenge-checklist li { position: relative; padding-left: 20px; color: var(--muted); font-size: 14.5px; line-height: 1.65; }
 .challenge-checklist li::before { content: ""; position: absolute; left: 2px; top: 9px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
-/* ---------- learning dashboard ---------- */
+/* ---------- home ---------- */
 .dashboard-home { padding-bottom: 72px; }
-.learning-dashboard { display: grid; grid-template-columns: 1fr minmax(min(340px, 100%), .72fr); gap: 28px; align-items: stretch; padding: 34px 0; border-bottom: 1px solid var(--line); }
-.dashboard-summary { display: flex; flex-direction: column; justify-content: center; padding: 18px 0; }
-.dashboard-summary p { color: var(--accent); font-size: 13px; font-weight: 800; margin: 0 0 10px; }
-.dashboard-summary h1 { max-width: 14ch; font-size: clamp(30px, 4vw, 44px); letter-spacing: -.03em; margin: 0 0 14px; }
-.dashboard-summary span { color: var(--muted); font-size: 15px; }
-.next-task { display: grid; grid-template-columns: 1fr auto; gap: 6px 18px; align-items: center; padding: 22px 24px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; background: var(--surface); }
-.next-task > span { grid-column: 1 / -1; color: var(--accent); font-size: 12px; font-weight: 800; }
-.next-task strong { font-size: 18px; }
-.next-task p { grid-column: 1; color: var(--muted); line-height: 1.55; margin: 0; }
+.home-hero { align-items: center; gap: clamp(28px, 4vw, 64px); padding-top: clamp(26px, 3.6vw, 54px); }
+.home-hero h1 { font-size: clamp(32px, 4.2vw, 50px); letter-spacing: -.03em; margin: 0; }
+.home-hero .course-stats { margin-top: var(--sp-5); }
+.home-hero .hero-actions { margin-top: var(--sp-4); }
+
+/* hero 示意板：三组状态叠放，基态显示 Grid（减少动效的用户看到的就是它） */
+.hero-board-figure { margin: 0; display: grid; gap: var(--sp-3); padding: var(--sp-4); border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.hero-board-frame svg { display: block; width: 100%; height: auto; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+.hero-state { opacity: 0; }
+.hero-state[data-state="grid"] { opacity: 1; }
+.hero-block { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.2; }
+.hero-board-states { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; }
+.hero-state-chip { display: grid; gap: 2px; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.hero-state-chip strong { font-size: 13px; }
+.hero-state-chip span { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.hero-board-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); color: var(--muted); font-size: 13px; line-height: 1.6; }
+.hero-board-actions { display: inline-flex; gap: var(--sp-2); }
+.hero-board-actions .text-button { min-height: 32px; font-size: 12.5px; }
+
+/* 继续学习条 */
+.resume-strip { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.2fr); gap: var(--sp-5); align-items: center; padding: var(--sp-5) 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.dashboard-summary { display: grid; gap: 4px; }
+.resume-label { color: var(--accent); font-size: 12.5px; font-weight: 800; }
+.dashboard-summary h2 { margin: 0; font-size: clamp(20px, 2.2vw, 26px); letter-spacing: -.02em; }
+.resume-progress-text { color: var(--muted); font-size: 14px; }
+.resume-ring { position: relative; width: 84px; height: 84px; display: grid; place-items: center; justify-self: center; }
+.resume-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--surface-3); stroke-width: 6; }
+.ring-value { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; stroke-dasharray: var(--ring-full, 164); stroke-dashoffset: var(--ring-done, 164); }
+.resume-ring span { font: 800 15px ui-monospace, monospace; }
+.next-task { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px var(--sp-4); align-items: center; padding: var(--sp-4) var(--sp-5); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; background: var(--surface); }
+.next-task > span { grid-column: 1 / -1; color: var(--text); font-size: 17px; font-weight: 700; }
+.next-task p { grid-column: 1; margin: 0; color: var(--muted); line-height: 1.55; }
 .next-task small { grid-column: 1; color: var(--muted); }
-.next-task .button { grid-column: 2; grid-row: 2 / 5; }
+.next-task .button { grid-column: 2; grid-row: 1 / 4; }
+
+/* 阶段轨道（复用 .stage-track 的 4 列与 ≤1100px 的 2 列规则） */
+.stage-track-section { padding: clamp(36px, 5vw, 64px) 0; border-top: 1px solid var(--line); }
+.stage-card.is-open { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.stage-card.is-passed { border-color: color-mix(in srgb, var(--success) 42%, var(--line)); }
+.stage-track .stage-progress { margin-top: 2px; }
+.stage-card-chapters { list-style: none; display: grid; gap: 4px; margin: var(--sp-2) 0 0; padding: 0; }
+.stage-card-chapters a { display: block; padding: 6px 8px; border-radius: 7px; color: var(--muted); font-size: 13px; }
+.stage-card-chapters a:hover { background: var(--surface-2); color: var(--text); }
+
+/* 三个真问题：基态是「坏掉的样子」，指针移上去才演示修好的样子 */
+.pain-section { padding: clamp(36px, 5vw, 64px) 0; border-top: 1px solid var(--line); }
+.pain-cards { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: var(--sp-4); margin: 0; padding: 0; }
+.pain-card { display: grid; gap: var(--sp-3); align-content: start; padding: var(--sp-4); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.pain-stage { padding: var(--sp-2); border-radius: 8px; background: var(--surface-2); }
+.pain-stage svg { display: block; width: 100%; height: auto; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+.pain-card strong { font-size: 16px; }
+.pain-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.pain-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.pain-gain { color: var(--success); font-size: 12.5px; font-weight: 700; }
+.pain-figure .pain-num-b, .pain-figure .pain-wrapped { opacity: 0; }
+.pain-margin .pain-num-a { fill: var(--danger); }
+.pain-margin .pain-num-b { fill: var(--success); }
+.pain-sticky .pain-num-a { fill: var(--danger); }
+.pain-sticky .pain-num-b { fill: var(--success); }
+.pain-sticky .pain-head { transform: translateY(56px); }
+
+/* 专题条 */
+.topic-strip { padding: clamp(36px, 5vw, 64px) 0; border-top: 1px solid var(--line); }
+
+/* 窄屏：继续学习条改成单列堆叠（进度环居中），三态标签也改成一列 */
+@media (max-width: 900px) {
+  .resume-strip { grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
+  .resume-ring { justify-self: start; }
+}
+@media (max-width: 640px) {
+  .hero-board-states { grid-template-columns: minmax(0, 1fr); }
+  .hero-board-figure { padding: var(--sp-3); }
+}
+
 .home-path { border-top: 0; padding-top: 36px; }
 
 /* ---------- guided lesson ---------- */
@@ -387,7 +451,7 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .topic-card:hover { border-color: var(--accent); }
 .topic-card-num { color: var(--accent); font: 800 12px ui-monospace, monospace; }
 .topic-card-eyebrow { color: var(--muted); font: 800 11px ui-monospace, monospace; letter-spacing: .08em; }
-.topic-card h2 { margin: 0; font-size: 20px; }
+.topic-card h2, .topic-card h3 { margin: 0; font-size: 20px; }
 .topic-card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.75; }
 .topic-card-meta { color: var(--muted); font-size: 12.5px; }
 .related-topics ul { display: grid; gap: var(--sp-3); margin: var(--sp-3) 0 0; padding: 0; list-style: none; }
@@ -757,7 +821,7 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
   .site-nav nav { display: none; }
   .mobile-menu { display: block; }
   .hero { grid-template-columns: 1fr; gap: 40px; }
-  .stage-track { grid-template-columns: 1fr 1fr; }
+  .stage-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Medium widths keep the reading column and the board side by side with a compact nav. */
   .learning-shell { grid-template-columns: 168px minmax(0, 1fr) 12px var(--board-w, minmax(280px, 320px)); }
   .learning-shell .lesson-nav { padding: 20px 10px 60px; }
@@ -825,7 +889,7 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
   .learning-dashboard { padding: 24px 0; gap: 14px; }
   .dashboard-summary { padding: 0; }
   .dashboard-summary h1 { font-size: 30px; }
-  .next-task { grid-template-columns: 1fr; padding: 18px; }
+  .next-task { grid-template-columns: minmax(0, 1fr); padding: 18px; }
   .next-task .button { grid-column: 1; grid-row: auto; margin-top: 8px; }
   .quiz-panel { margin-top: 36px; padding: 20px 16px; }
   .quiz-header { grid-template-columns: 1fr; }
@@ -878,6 +942,13 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
 @keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes tick-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
 @keyframes ring-draw { from { stroke-dashoffset: var(--ring-full, 100); } to { stroke-dashoffset: var(--ring-done, 0); } }
+/* hero 三态循环：三组共用 7.2s，各自在自己的窗口里显示（窗口与下面的状态标签一一对应） */
+@keyframes hero-state-flow { 0%, 26% { opacity: 1; } 33%, 100% { opacity: 0; } }
+@keyframes hero-state-flex { 0%, 33% { opacity: 0; } 39%, 59% { opacity: 1; } 66%, 100% { opacity: 0; } }
+@keyframes hero-state-grid { 0%, 66% { opacity: 0; } 72%, 93% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hero-chip-0 { 0%, 26% { opacity: 1; background-color: var(--accent-soft); } 33%, 100% { opacity: .55; background-color: var(--surface-2); } }
+@keyframes hero-chip-1 { 0%, 33% { opacity: .55; background-color: var(--surface-2); } 39%, 59% { opacity: 1; background-color: var(--accent-soft); } 66%, 100% { opacity: .55; background-color: var(--surface-2); } }
+@keyframes hero-chip-2 { 0%, 66% { opacity: .55; background-color: var(--surface-2); } 72%, 93% { opacity: 1; background-color: var(--accent-soft); } 100% { opacity: .55; background-color: var(--surface-2); } }
 
 /* 顶部滚动进度条：不支持 scroll-driven 动画的浏览器不渲染这个元素（默认 display:none）。 */
 .scroll-progress { display: none; }
@@ -909,9 +980,74 @@ footer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px
   /* 图解：进入视口时内部元素错峰淡入；Safari/Firefox 未支持时保持静态，内容不受影响。 */
   @supports (animation-timeline: view()) {
     .figure-canvas svg > * { animation: fig-in var(--t-slow) var(--ease) backwards; animation-timeline: view(); animation-range: entry 10% cover 32%; }
+    /* 首屏以下的区块进入视口时淡入（只位移 Y，且基态就在最终位置） */
+    .stage-track > li, .pain-cards > li, .topic-strip .topic-card, .chapter-group { animation: fade-up var(--t-slow) var(--ease) backwards; animation-timeline: view(); animation-range: entry 4% cover 22%; }
   }
+
+  /* hero 示意板：三态循环 + 状态标签同步高亮；指针悬停时整套暂停 */
+  .hero-state[data-state="flow"] { animation: hero-state-flow 7.2s var(--ease) infinite both; }
+  .hero-state[data-state="flex"] { animation: hero-state-flex 7.2s var(--ease) infinite both; }
+  .hero-state[data-state="grid"] { animation: hero-state-grid 7.2s var(--ease) infinite both; }
+  .hero-state-chip { animation-duration: 7.2s; animation-timing-function: var(--ease); animation-iteration-count: infinite; animation-fill-mode: both; }
+  .hero-state-chip.chip-0 { animation-name: hero-chip-0; }
+  .hero-state-chip.chip-1 { animation-name: hero-chip-1; }
+  .hero-state-chip.chip-2 { animation-name: hero-chip-2; }
+  .hero-board-figure[data-paused="true"] .hero-state, .hero-board-figure[data-paused="true"] .hero-state-chip { animation-play-state: paused; }
+
+  /* 进度环：从 0 画到当前完成度（--ring-done 由组件按比例写入） */
+  .ring-value { animation: ring-draw var(--t-slow) var(--ease) backwards; }
+
+  /* 首屏：文案、进度条与示意板错峰淡入（纵向 8px，不改变任何测得的横向几何） */
+  .home-hero .hero-copy > *, .home-hero .hero-demo, .resume-strip > * { animation: fade-up var(--t-slow) var(--ease) backwards; }
+  .home-hero .hero-copy > *:nth-child(2) { animation-delay: 60ms; }
+  .home-hero .hero-copy > *:nth-child(3) { animation-delay: 120ms; }
+  .home-hero .hero-copy > *:nth-child(4) { animation-delay: 180ms; }
+  .home-hero .hero-copy > *:nth-child(5) { animation-delay: 240ms; }
+  .home-hero .hero-demo { animation-delay: 120ms; }
 }
 
+
+/* ---------- pointer reactions ----------
+   只在真的有指针的设备上生效：触摸设备点一下不会留下“粘住”的高亮。
+   全部是 :hover 驱动的状态互换（transform / opacity / background / box-shadow），不碰布局属性。 */
+@media (hover: hover) and (pointer: fine) {
+  .chapter-row { position: relative; }
+  .chapter-row::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 10px 0 0 10px; background: var(--accent); transition: width var(--t-fast) var(--ease); }
+  .chapter-row:hover { transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, var(--navy) 12%, transparent); }
+  .chapter-row:hover::before { width: 3px; }
+  .chapter-num, .course-stats strong, .chapter-state svg { transition: color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+  .chapter-row:hover .chapter-num { color: var(--accent); }
+  .chapter-row:hover .chapter-state svg { transform: translateX(2px); }
+
+  .stage-track > li { transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+  .stage-track > li:hover { transform: translateY(-2px); box-shadow: 0 10px 24px color-mix(in srgb, var(--navy) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+  .stage-index { display: inline-block; transition: transform var(--t-fast) var(--ease); }
+  .stage-track > li:hover .stage-index { transform: scale(1.15); }
+
+  .course-stats li { transition: transform var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+  .course-stats li:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .course-stats li:hover strong { color: var(--accent); }
+
+  .topic-card, .pain-card { transition: transform var(--t-mid) var(--ease), box-shadow var(--t-mid) var(--ease), border-color var(--t-mid) var(--ease); }
+  .topic-card:hover, .pain-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px color-mix(in srgb, var(--navy) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .topic-card p { transition: color var(--t-mid) var(--ease); }
+  .topic-card:hover p { color: var(--text); }
+  .topic-card:hover .topic-card-num, .topic-card:hover h2, .topic-card:hover h3 { color: var(--accent-dark); }
+
+  /* hero 示意板：指针移上去暂停整段循环，指针所在的方块自己抬起 */
+  .hero-board-figure:hover .hero-state, .hero-board-figure:hover .hero-state-chip { animation-play-state: paused; }
+  .hero-block { transition: fill var(--t-fast) var(--ease), stroke var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+  .hero-block:hover { fill: var(--accent-soft); stroke: var(--accent); transform: translateY(-2px); }
+
+  /* 三个真问题：指针移上去才演示「修好后」的样子 */
+  .pain-band, .pain-head, .pain-num-a, .pain-num-b, .pain-long, .pain-wrapped, .pain-gap { transition: transform var(--t-mid) var(--ease), opacity var(--t-mid) var(--ease); }
+  .pain-margin:hover .pain-band { transform: scaleY(.5); }
+  .pain-margin:hover .pain-num-a, .pain-sticky:hover .pain-num-a, .pain-reflow:hover .pain-long { opacity: 0; }
+  .pain-margin:hover .pain-num-b, .pain-sticky:hover .pain-num-b, .pain-reflow:hover .pain-wrapped { opacity: 1; }
+  .pain-sticky:hover .pain-head { transform: translateY(0); }
+  .pain-sticky:hover .pain-gap { opacity: 0; }
+  .pain-card:hover .pain-gain { text-decoration: underline; text-underline-offset: 3px; }
+}
 
 /* ---------- print ---------- */
 @media print {
