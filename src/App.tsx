@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, Copy, Lightbulb, List, LockKey, Moon, Pla
 import { lessons, stageOf, stages, t, ui, type Copy as LocalizedCopy, type DemoKind, type KeyPoint, type Lesson, type Locale } from "./data";
 import { chapterQuizzes, stageQuizzes, type Quiz, type QuizQuestion } from "./quizData";
 import { FIGURES } from "./figures";
+import { aboutExtras, topics } from "./topics";
 
 const read = (value: { zh: string; en: string }, locale: Locale) => value[locale];
 const localeOf = (value?: string): Locale => (value === "en" ? "en" : "zh");
@@ -1109,6 +1110,44 @@ function ChallengePage() {
   return <Navigate to={`/${locale}/lesson/final-challenge`} replace />;
 }
 
+function TopicPage() {
+  const locale = localeOf(useParams().locale);
+  const { topicId } = useParams<{ topicId: string }>();
+  const zh = locale === "zh";
+  const topic = topics.find((item) => item.id === topicId);
+  if (!topic) return <Navigate to={`/${locale}/course`} replace />;
+  const other = topics.find((item) => item.id !== topic.id);
+  return <Shell><main className="page-main topic-main">
+    <header className="page-header">
+      <p className="eyebrow">{topic.eyebrow}</p>
+      <h1>{read(topic.title, locale)}</h1>
+      <p>{read(topic.summary, locale)}</p>
+      <p className="topic-meta"><span>{read(topic.minutes, locale)}</span><span>{zh ? `共 ${topic.sections.length} 节` : `${topic.sections.length} sections`}</span></p>
+    </header>
+    <nav className="topic-outline" aria-label={zh ? "本篇目录" : "On this page"}>
+      {topic.sections.map((section, index) => <button type="button" key={section.id} onClick={() => document.getElementById(`topic-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}><b>{String(index + 1).padStart(2, "0")}</b><span>{read(section.heading, locale)}</span></button>)}
+    </nav>
+    {topic.sections.map((section, index) => <section className="topic-section" id={`topic-${section.id}`} key={section.id} tabIndex={-1}>
+      <span className="step-label">{String(index + 1).padStart(2, "0")}</span>
+      <h2>{read(section.heading, locale)}<AnchorButton target={`topic-${section.id}`} label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      {section.body.map((paragraph) => <p key={paragraph.zh}>{read(paragraph, locale)}</p>)}
+      {section.figure && FIGURES[section.figure] && <figure className="figure-item topic-figure">
+        <div className="figure-canvas" role="img" aria-label={read(FIGURES[section.figure].label, locale)} dangerouslySetInnerHTML={{ __html: FIGURES[section.figure].svg }} />
+        <figcaption>{read(FIGURES[section.figure].label, locale)}</figcaption>
+      </figure>}
+      {section.code && <div className="code-block accent-code"><div>{section.code.label}</div><pre><code>{section.code.text}</code></pre></div>}
+      {section.list && <ul className="topic-list">{section.list.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul>}
+      {section.table && <div className="table-scroll"><table className="topic-table">
+        <thead><tr>{section.table.head.map((cell) => <th scope="col" key={cell.zh}>{read(cell, locale)}</th>)}</tr></thead>
+        <tbody>{section.table.rows.map((row) => <tr key={row[0].zh}>{row.map((cell) => <td key={cell.zh}>{read(cell, locale)}</td>)}</tr>)}</tbody>
+      </table></div>}
+    </section>)}
+    {topic.checklist && <section className="lesson-checklist"><h3>{zh ? "读完先自查这几项" : "Check these before moving on"}</h3><ul>{topic.checklist.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul></section>}
+    {topic.bibliography && <section className="learning-block bibliography-block"><h2>{zh ? "本篇依据与延伸文献" : "Sources behind this dive"}</h2><ul className="bibliography-list">{topic.bibliography.map((ref) => <li key={ref.href} data-kind={ref.kind || "docs"}><span>{read(REF_KIND[ref.kind || "docs"], locale)}</span><a href={ref.href} target="_blank" rel="noreferrer">{ref.label}</a></li>)}</ul></section>}
+    {other && <p className="topic-next">{zh ? "另一篇专题：" : "Another deep dive: "}<Link to={`/${locale}/topics/${other.id}`}>{read(other.title, locale)}</Link></p>}
+  </main><Footer locale={locale} /></Shell>;
+}
+
 function About() {
   const locale = localeOf(useParams().locale);
   return <Shell><main className="page-main">
@@ -1135,6 +1174,21 @@ function About() {
         <p>{locale === "zh" ? "项目完全静态，构建产物可以直接发布到 GitHub Pages，使用 Hash 路由，刷新任意章节都不会 404。" : "The project is fully static. The build output deploys straight to GitHub Pages, and hash routing keeps every chapter refresh-safe."}</p>
       </div>
     </section>
+    <section className="about-grid about-extras">
+      <div className="about-wide">
+        <h2>{read(aboutExtras.sources.heading, locale)}</h2>
+        <p>{read(aboutExtras.sources.intro, locale)}</p>
+        <ul className="source-list">{aboutExtras.sources.list.map((item) => <li key={item.href} data-kind={item.kind}><a href={item.href} target="_blank" rel="noreferrer">{item.label}</a><span>{read(item.note, locale)}</span></li>)}</ul>
+      </div>
+      <div>
+        <h2>{locale === "zh" ? "专题深挖" : "Deep dives"}</h2>
+        <ul className="about-list">{topics.map((topic) => <li key={topic.id}><Link to={`/${locale}/topics/${topic.id}`}>{read(topic.title, locale)}</Link></li>)}</ul>
+      </div>
+      {[aboutExtras.principles, aboutExtras.stack, aboutExtras.quality].map((block) => <div key={block.heading.zh}>
+        <h2>{read(block.heading, locale)}</h2>
+        <ul className="about-list">{block.list.map((item) => <li key={item.zh}>{read(item, locale)}</li>)}</ul>
+      </div>)}
+    </section>
   </main><Footer locale={locale} /></Shell>;
 }
 
@@ -1150,6 +1204,8 @@ function Footer({ locale }: { locale: Locale }) {
       <Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link>
       <Link to={`/${locale}/questions`}>{read(ui.navQuestions, locale)}</Link>
       <Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link>
+      <Link to={`/${locale}/topics/formatting-contexts`}>{zh ? "专题 · 格式化上下文" : "Deep dive · contexts"}</Link>
+      <Link to={`/${locale}/topics/spacing-rhythm`}>{zh ? "专题 · 间距与节奏" : "Deep dive · spacing"}</Link>
     </div>
     <div className="footer-col">
       <h2>{zh ? "延伸阅读" : "References"}</h2>
@@ -1176,6 +1232,7 @@ export default function App() {
     <Route path="/:locale/questions" element={<QuestionBank />} />
     <Route path="/:locale/challenge" element={<ChallengePage />} />
     <Route path="/:locale/about" element={<About />} />
+    <Route path="/:locale/topics/:topicId" element={<TopicPage />} />
     <Route path="*" element={<Navigate to={`/${preferred}`} replace />} />
   </Routes>;
 }
