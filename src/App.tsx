@@ -7,6 +7,8 @@ import { chapterQuizzes, stageQuizzes, type Quiz, type QuizQuestion } from "./qu
 import { FIGURES } from "./figures";
 import { aboutExtras, topics } from "./topics";
 
+const ALL_QUESTIONS = [...Object.values(chapterQuizzes), ...Object.values(stageQuizzes)].reduce((n, quiz) => n + (quiz ? quiz.questions.length : 0), 0);
+
 const read = (value: { zh: string; en: string }, locale: Locale) => value[locale];
 const localeOf = (value?: string): Locale => (value === "en" ? "en" : "zh");
 
@@ -409,7 +411,7 @@ function Course() {
       <p className="eyebrow">LAYOUT CURRICULUM</p>
       <h1>{read(ui.navCourse, locale)}</h1>
       <p>{locale === "zh" ? "8 个章节按四个阶段推进，从页面结构一直到完整的响应式项目。" : "Eight chapters across four stages, from page structure to a complete responsive project."}</p>
-      <p className="page-header-link"><Link className="text-link" to={`/${locale}/questions`}>{locale === "zh" ? "查看全部 72 道题目" : "Browse all 72 questions"}<ArrowRight /></Link></p>
+      <p className="page-header-link"><Link className="text-link" to={`/${locale}/questions`}>{locale === "zh" ? `查看全部 ${ALL_QUESTIONS} 道题目` : `Browse all ${ALL_QUESTIONS} questions`}<ArrowRight /></Link></p>
       <p className="page-header-link"><Link className="text-link" to={`/${locale}/topics`}>{locale === "zh" ? `四篇专题深挖：格式化上下文 · 间距节奏 · 调试方法 · 可访问性` : "Four deep dives: contexts, spacing, debugging, accessibility"}<ArrowRight /></Link></p>
     </header>
     <ChapterList locale={locale} done={done} practiced={practiced} chapterPassed={chapterPassed} stagePassed={stagePassed} />
@@ -425,6 +427,7 @@ function BankQuestion({ question, index, locale, revealed, mode, picked, onToggl
   const guide = solving && picked !== undefined && picked !== question.answer;
   return <article className={`bank-question ${solved ? "is-solved" : ""}`}>
     <header><span className="bank-num">{String(index + 1).padStart(2, "0")}</span><h4>{read(question.prompt, locale)}</h4></header>
+    {question.code && <pre className="quiz-code"><code>{question.code}</code></pre>}
     <ol className="bank-options">{question.options.map((option, optionIndex) => {
       const isAnswer = showAnswer && optionIndex === question.answer;
       const isPicked = solving && picked === optionIndex;
@@ -527,7 +530,7 @@ function QuestionBank() {
     <header className="page-header">
       <p className="eyebrow">QUESTION BANK</p>
       <h1>{read(ui.navQuestions, locale)}</h1>
-      <p>{zh ? `共 ${totalQuestions} 道单选题：8 章各 4 道章末题、4 个阶段各 10 道综合题，两部分题目不重复。默认「复习模式」直接看答案，切到「自测模式」则先作答、答对才显示答案。` : `All ${totalQuestions} single-choice questions: four per chapter quiz and ten per stage test, with no reused prompts. Review mode reveals answers; self-test mode makes you answer first and only reveals once you are right.`}</p>
+      <p>{zh ? `共 ${totalQuestions} 道单选题：8 章各 5 道章末题（其中 1 道是「找错题」，先看代码再诊断）、4 个阶段各 10 道综合题，两部分题目不重复。默认「复习模式」直接看答案，切到「自测模式」则先作答、答对才显示答案。` : `All ${totalQuestions} single-choice questions: five per chapter (one of them a find-the-bug item that shows broken code first) plus ten per stage, with no overlap. Review mode reveals answers; quiz mode makes you answer before the explanation appears.`}</p>
     </header>
     <section className="bank-toolbar" aria-label={zh ? "筛选与搜索" : "Filters and search"}>
       <label>{zh ? "阶段" : "Stage"}<select value={stageKey} onChange={(event) => { setStageKey(event.target.value); setChapterId("all"); }}><option value="all">{zh ? "全部阶段" : "All stages"}</option>{stages.map((stage) => <option value={stage.key} key={stage.key}>{read(stage.name, locale)}</option>)}</select></label>
@@ -649,6 +652,7 @@ function QuizQuestionView({ question, index, locale, answer, submitted, onAnswer
   const guiding = !submitted && answer !== undefined;
   return <fieldset className={`quiz-question ${correct ? "is-correct" : ""} ${wrong ? "is-wrong" : ""}`}>
     <legend><span>{String(index + 1).padStart(2, "0")}</span>{read(question.prompt, locale)}</legend>
+    {question.code && <pre className="quiz-code"><code>{question.code}</code></pre>}
     <div className="quiz-options">
       {question.options.map((option, optionIndex) => <label className={answer === optionIndex ? "selected" : ""} key={option.zh}>
         <input type="radio" name={question.id} checked={answer === optionIndex} disabled={correct} onChange={() => onAnswer(optionIndex)} />

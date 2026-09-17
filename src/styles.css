@@ -389,6 +389,8 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .export-buttons .button { text-decoration: none; }
 .export-buttons .button.ghost { background: none; color: var(--accent-dark); border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--line)); }
 .export-meta { margin: 0; color: var(--muted); font-size: 12.5px; }
+.quiz-code { margin: var(--sp-2) 0 0; padding: var(--sp-3); border: 1px solid var(--line); border-radius: 8px; background: var(--code); color: var(--code-text); font: 12.5px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-x: auto; }
+.bank-question .quiz-code { margin-top: var(--sp-3); }
 /* ---------- 专题页与关于页扩展 ---------- */
 .topic-main { padding-bottom: var(--sp-6); }
 .topic-meta { display: flex; gap: var(--sp-4); margin-top: var(--sp-2); color: var(--muted); font-size: 13px; }
