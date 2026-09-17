@@ -174,13 +174,14 @@ function Shell({ children }: { children: ReactNode }) {
       <Link className="brand" to={`/${locale}`} aria-label="Layout Lab home"><span className="brand-mark"><i /><i /><i /></span>Layout Lab</Link>
       <nav aria-label={locale === "zh" ? "主导航" : "Main navigation"}>
         <Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link>
+        <Link to={`/${locale}/topics`}>{locale === "zh" ? "专题" : "Deep dives"}</Link>
         <Link to={`/${locale}/questions`}>{read(ui.navQuestions, locale)}</Link>
         <Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link>
         <Link to={`/${locale}/about`}>{read(ui.navAbout, locale)}</Link>
       </nav>
       <div className="nav-actions">
         <Link className="nav-progress" title={read(ui.progress, locale)} to={`/${locale}${nextHref}`}>{completedCount}/{totalCount}</Link>
-        <details className="mobile-menu"><summary aria-label={locale === "zh" ? "打开菜单" : "Open menu"}><List /></summary><div><Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link><Link to={`/${locale}/questions`}>{read(ui.navQuestions, locale)}</Link><Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link><Link to={`/${locale}/about`}>{read(ui.navAbout, locale)}</Link></div></details>
+        <details className="mobile-menu"><summary aria-label={locale === "zh" ? "打开菜单" : "Open menu"}><List /></summary><div><Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link><Link to={`/${locale}/topics`}>{locale === "zh" ? "专题" : "Deep dives"}</Link><Link to={`/${locale}/questions`}>{read(ui.navQuestions, locale)}</Link><Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link><Link to={`/${locale}/about`}>{read(ui.navAbout, locale)}</Link></div></details>
         <button className="icon-button language" onClick={switchLocale} aria-label={locale === "zh" ? "Switch to English" : "切换到中文"}>{locale === "zh" ? "中 / EN" : "EN / 中"}</button>
         <button className="icon-button" onClick={() => setDark(!dark)} aria-label={dark ? "Use light theme" : "Use dark theme"}>{dark ? <Sun /> : <Moon />}</button>
       </div>
@@ -409,6 +410,7 @@ function Course() {
       <h1>{read(ui.navCourse, locale)}</h1>
       <p>{locale === "zh" ? "8 个章节按四个阶段推进，从页面结构一直到完整的响应式项目。" : "Eight chapters across four stages, from page structure to a complete responsive project."}</p>
       <p className="page-header-link"><Link className="text-link" to={`/${locale}/questions`}>{locale === "zh" ? "查看全部 72 道题目" : "Browse all 72 questions"}<ArrowRight /></Link></p>
+      <p className="page-header-link"><Link className="text-link" to={`/${locale}/topics`}>{locale === "zh" ? `四篇专题深挖：格式化上下文 · 间距节奏 · 调试方法 · 可访问性` : "Four deep dives: contexts, spacing, debugging, accessibility"}<ArrowRight /></Link></p>
     </header>
     <ChapterList locale={locale} done={done} practiced={practiced} chapterPassed={chapterPassed} stagePassed={stagePassed} />
   </main><Footer locale={locale} /></Shell>;
@@ -774,6 +776,17 @@ function LessonIntro({ lesson, locale, activity, onEvidence }: { lesson: Lesson;
 }
 
 /* Steps 02 and 03: reading order and the hands-on brief that points at the synchronized board. */
+const RELATED_TOPICS: Record<string, string[]> = {
+  "page-structure": ["accessibility-flow"],
+  "box-model": ["spacing-rhythm", "formatting-contexts"],
+  flexbox: ["spacing-rhythm", "debugging-layout"],
+  positioning: ["formatting-contexts", "debugging-layout"],
+  grid: ["debugging-layout", "spacing-rhythm"],
+  responsive: ["accessibility-flow", "debugging-layout"],
+  patterns: ["formatting-contexts", "spacing-rhythm"],
+  "final-challenge": ["accessibility-flow", "debugging-layout"],
+};
+
 const REF_KIND: Record<string, { zh: string; en: string }> = {
   spec: { zh: "规范原文", en: "spec" },
   paper: { zh: "经典文献", en: "paper" },
@@ -861,6 +874,14 @@ function LessonStudy({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
         <tbody>{toolChoices().map((row) => <tr key={row.tool}><td>{read(row.need, locale)}</td><td><code>{row.tool}</code></td><td>{read(row.reason, locale)}</td></tr>)}</tbody>
       </table></div>}
     </section>
+    {(RELATED_TOPICS[lesson.id] || []).length > 0 && <section className="learning-block related-topics" id="related-topics" tabIndex={-1}>
+      <h2>{zh ? "相关专题" : "Related deep dives"}<AnchorButton target="related-topics" label={zh ? "定位到本节" : "Focus this section"} /></h2>
+      <p>{zh ? "这一章的问题都有更长的版本：专题不重复课程内容，而是把同一类问题挖到底。" : "Each of this chapter's problems has a longer version: the deep dives work one class of problem to the bottom instead of repeating the lesson."}</p>
+      <ul>{(RELATED_TOPICS[lesson.id] || []).map((topicId) => {
+        const topic = topics.find((item) => item.id === topicId);
+        return topic ? <li key={topic.id}><Link to={`/${locale}/topics/${topic.id}`}>{read(topic.title, locale)}</Link><span>{read(topic.summary, locale)}</span></li> : null;
+      })}</ul>
+    </section>}
     {(lesson.focus || lesson.difficulty || lesson.examPoints) && <section className="learning-block teaching-notes" id="teaching-notes" tabIndex={-1}>
       <span className="step-label">{zh ? "教师视角" : "For teachers"}</span>
       <h2>{zh ? "这一章的重点、难点与考察点" : "Focus, difficulty and assessment"}<AnchorButton target="teaching-notes" label={zh ? "定位到本节" : "Focus this section"} /></h2>
@@ -1115,6 +1136,28 @@ function ChallengePage() {
   return <Navigate to={`/${locale}/lesson/final-challenge`} replace />;
 }
 
+function TopicsIndex() {
+  const locale = localeOf(useParams().locale);
+  const zh = locale === "zh";
+  return <Shell><main className="page-main topic-main">
+    <header className="page-header">
+      <p className="eyebrow">{zh ? "专题深挖" : "DEEP DIVES"}</p>
+      <h1>{zh ? "专题深挖" : "Deep dives"}</h1>
+      <p>{zh ? "四篇专题各解决一类系统性问题：格式化上下文与包含块、间距与节奏系统、布局调试方法论、可访问性与文档流。它们与八章课程互补，可以单独读，也可以当章节的延伸。" : "Four deep dives, each solving one systemic problem: formatting contexts and containing blocks, spacing and rhythm, debugging layout, and accessibility with normal flow. They complement the eight chapters and stand alone."}</p>
+      <p className="page-header-link"><Link className="text-link" to={`/${locale}/course`}>{zh ? "回到八章课程" : "Back to the eight chapters"}<ArrowRight /></Link></p>
+    </header>
+    <section className="topic-cards">
+      {topics.map((topic, index) => <Link className="topic-card" to={`/${locale}/topics/${topic.id}`} key={topic.id}>
+        <span className="topic-card-num">{String(index + 1).padStart(2, "0")}</span>
+        <span className="topic-card-eyebrow">{topic.eyebrow}</span>
+        <h2>{read(topic.title, locale)}</h2>
+        <p>{read(topic.summary, locale)}</p>
+        <span className="topic-card-meta">{read(topic.minutes, locale)} · {zh ? `${topic.sections.length} 节` : `${topic.sections.length} sections`} · {topic.bibliography?.length ?? 0} {zh ? "条文献" : "sources"}</span>
+      </Link>)}
+    </section>
+  </main><Footer locale={locale} /></Shell>;
+}
+
 function TopicPage() {
   const locale = localeOf(useParams().locale);
   const { topicId } = useParams<{ topicId: string }>();
@@ -1209,9 +1252,7 @@ function Footer({ locale }: { locale: Locale }) {
       <Link to={`/${locale}/course`}>{read(ui.navCourse, locale)}</Link>
       <Link to={`/${locale}/questions`}>{read(ui.navQuestions, locale)}</Link>
       <Link to={`/${locale}/challenge`}>{read(ui.navChallenge, locale)}</Link>
-      <Link to={`/${locale}/topics/formatting-contexts`}>{zh ? "专题 · 格式化上下文" : "Deep dive · contexts"}</Link>
-      <Link to={`/${locale}/topics/spacing-rhythm`}>{zh ? "专题 · 间距与节奏" : "Deep dive · spacing"}</Link>
-      <Link to={`/${locale}/topics/debugging-layout`}>{zh ? "专题 · 调试方法论" : "Deep dive · debugging"}</Link>
+      <Link to={`/${locale}/topics`}>{zh ? "专题深挖（4 篇）" : "Deep dives (4)"}</Link>
     </div>
     <div className="footer-col">
       <h2>{zh ? "延伸阅读" : "References"}</h2>
@@ -1238,6 +1279,7 @@ export default function App() {
     <Route path="/:locale/questions" element={<QuestionBank />} />
     <Route path="/:locale/challenge" element={<ChallengePage />} />
     <Route path="/:locale/about" element={<About />} />
+    <Route path="/:locale/topics" element={<TopicsIndex />} />
     <Route path="/:locale/topics/:topicId" element={<TopicPage />} />
     <Route path="*" element={<Navigate to={`/${preferred}`} replace />} />
   </Routes>;

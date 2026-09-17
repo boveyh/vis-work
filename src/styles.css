@@ -371,6 +371,18 @@ main { width: min(100% - 40px, 1280px); margin-inline: auto; }
 .bibliography-list li[data-kind="paper"] > span { border-color: color-mix(in srgb, var(--tone-4) 45%, var(--line)); color: var(--tone-4); }
 .bibliography-list li[data-kind="article"] > span { border-color: color-mix(in srgb, var(--success) 45%, var(--line)); color: var(--success); }
 .bibliography-list a { color: var(--code-accent); overflow-wrap: anywhere; }
+.topic-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-4); }
+.topic-card { display: grid; gap: var(--sp-2); align-content: start; padding: var(--sp-4); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; text-decoration: none; }
+.topic-card:hover { border-color: var(--accent); }
+.topic-card-num { color: var(--accent); font: 800 12px ui-monospace, monospace; }
+.topic-card-eyebrow { color: var(--muted); font: 800 11px ui-monospace, monospace; letter-spacing: .08em; }
+.topic-card h2 { margin: 0; font-size: 20px; }
+.topic-card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.75; }
+.topic-card-meta { color: var(--muted); font-size: 12.5px; }
+.related-topics ul { display: grid; gap: var(--sp-3); margin: var(--sp-3) 0 0; padding: 0; list-style: none; }
+.related-topics li { display: grid; gap: 2px; padding: var(--sp-3) var(--sp-4); border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: var(--surface-2); }
+.related-topics a { color: var(--code-accent); font-weight: 600; }
+.related-topics span { color: var(--muted); font-size: 14px; line-height: 1.7; }
 /* ---------- 专题页与关于页扩展 ---------- */
 .topic-main { padding-bottom: var(--sp-6); }
 .topic-meta { display: flex; gap: var(--sp-4); margin-top: var(--sp-2); color: var(--muted); font-size: 13px; }

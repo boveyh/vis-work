@@ -396,6 +396,139 @@ while (el && el !== document.body) {
       { label: "CSS 2.2 §10.1 · 包含块", href: SPEC("visudet.html#containing-block-details"), kind: "spec" },
     ],
   },
+  {
+    id: "accessibility-flow",
+    eyebrow: "DEEP DIVE 04",
+    title: { zh: "可访问性与文档流", en: "Accessibility and normal flow" },
+    summary: {
+      zh: "文档流、DOM 顺序与可访问性树三者是同一件事的三种读法。这一篇把「焦点顺序、地标、320px 重排、读屏实测」串成一条链，并给出不依赖任何插件的五个检查动作。",
+      en: "Normal flow, DOM order and the accessibility tree are three readings of the same thing. This deep dive strings focus order, landmarks, 320px reflow and screen-reader testing into one chain, with five checks that need no plugins.",
+    },
+    minutes: { zh: "约 24 分钟", en: "24 min" },
+    sections: [
+      {
+        id: "flow",
+        heading: { zh: "文档流就是可访问性的底盘", en: "Normal flow is the accessibility chassis" },
+        body: [
+          {
+            zh: "浏览器把 HTML 解析成一棵树，再从同一棵树生成可访问性树：DOM 顺序既是读屏器的朗读顺序，也是键盘 Tab 的顺序，还是普通流里默认的视觉顺序。三者同源的好处是——只要不做视觉重排，它们永远一致；一旦用 CSS 把顺序拉开，就会产生分叉。",
+            en: "The browser parses HTML into a tree and derives the accessibility tree from it: DOM order is the screen reader's reading order, the tab order, and the visual order of normal flow. Because they share one source they agree by default — and the moment CSS rearranges things visually, they diverge.",
+          },
+          {
+            zh: "所以「先写语义结构，再做视觉调整」不是风格建议，而是把一致性成本降到最低的做法：结构正确时，键盘、读屏与视觉三套顺序自动对齐；结构错了，后面得用 tabindex、aria 与 order 一个个补救，而每一个补救都会留下新的不一致。",
+            en: "That is why “semantics first, visuals second” is not a style preference but the cheapest way to keep the three orders aligned: correct structure aligns keyboard, screen reader and eyes for free, while a broken one needs tabindex, aria and order patches — each of which adds a new inconsistency.",
+          },
+        ],
+        figure: "landmark-map",
+      },
+      {
+        id: "order",
+        heading: { zh: "焦点顺序必须跟着 DOM 走", en: "Focus order follows the DOM" },
+        body: [
+          {
+            zh: "WCAG 2.4.3 要求焦点顺序保持意义与可操作性。用 order、row-reverse、flex-direction: row-reverse 或绝对定位把元素视觉重排，都会让 Tab 顺序与眼睛看到的顺序对不上；用 tabindex 正数强改顺序更糟——它会把元素从正常循环里拽出来，后面的顺序全靠猜。",
+            en: "WCAG 2.4.3 asks that focus order preserve meaning and operability. Reordering visually with order, row-reverse or absolute positioning leaves the tab order disagreeing with the eyes, and positive tabindex values are worse still: they pull elements out of the natural cycle and make everything after them guesswork.",
+          },
+        ],
+        figure: "order-vs-dom",
+        list: [
+          { zh: "反模式：把主按钮用 order: -1 提到视觉最前，Tab 却先落在次按钮上。", en: "Anti-pattern: raising the primary button with order: -1 while Tab still reaches the secondary one first." },
+          { zh: "反模式：用 tabindex=\"1\" 修正顺序，结果是全局顺序被打断。", en: "Anti-pattern: patching order with tabindex=\"1\", which interrupts the global sequence." },
+          { zh: "反模式：整块内容绝对定位脱离文档流，读屏器朗读顺序与视觉完全无关。", en: "Anti-pattern: taking a whole block out of flow so the reading order has nothing to do with the visuals." },
+          { zh: "正解：需要不同顺序时改 DOM，让结构与呈现同源。", en: "The fix: when the order must change, change the DOM so structure and presentation share one source." },
+        ],
+      },
+      {
+        id: "landmarks",
+        heading: { zh: "地标与跳转：给键盘用户一条捷径", en: "Landmarks and skip links: a shortcut for keyboard users" },
+        body: [
+          {
+            zh: "地标（header / nav / main / aside / footer）在可访问性树上会变成可跳转的区域。读屏用户按一个快捷键就能列出全部地标并直接跳到 main；这一条的前提正是「一页只有一个 main」与「不要用 div 代替 nav」。",
+            en: "Landmarks (header, nav, main, aside, footer) become jump targets in the accessibility tree: a screen-reader user lists them with one shortcut and jumps straight to main. The precondition is exactly “one main per page” and “do not use a div where nav belongs”.",
+          },
+          {
+            zh: "可视页面还应提供「跳到主要内容」的 skip link：它是键盘用户在首屏跳过重复导航的唯一低成本手段，实现只需一个聚焦后才可见的链接，加上对目标元素 focus() 与 tabindex=\"-1\"。本站顶部的 skip-link 就是这一实现。",
+            en: "A visual page should also offer a “skip to main content” link: for keyboard users it is the cheapest way past repeated navigation. Implement it as a link that only becomes visible on focus, plus focus() and tabindex=\"-1\" on the target. The skip link at the top of this site is exactly that.",
+          },
+        ],
+        list: [
+          { zh: "每个 <nav> 都给 aria-label（「主导航」「目录」），否则读屏里会听到一串无名的导航。", en: "Give every nav an aria-label (“Main”, “Contents”), otherwise a screen reader announces a run of nameless navigations." },
+          { zh: "标题层级不跳级：h1 → h2 → h3，读屏用户靠它当目录用。", en: "Do not skip heading levels: h1 to h2 to h3 is the outline screen-reader users navigate by." },
+          { zh: "链接文字要能独立表意，「点这里」离开上下文毫无信息。", en: "Link text must stand on its own; “click here” carries nothing once removed from context." },
+          { zh: "图标按钮必须有可访问名称（aria-label 或视觉隐藏文本）。", en: "Icon-only buttons need an accessible name: an aria-label or visually hidden text." },
+        ],
+      },
+      {
+        id: "reflow",
+        heading: { zh: "320px 与缩放：两条硬性下限", en: "320px and zoom: two hard floors" },
+        body: [
+          {
+            zh: "WCAG 1.4.10 要求纵向滚动的内容在等效 320 CSS 像素宽度下不需要双向滚动；1.4.4 要求文字放大到 200% 不丢内容或功能。这两条把「响应式」从审美拉回到验收：320px 对应 400% 缩放下的 1280px 视口，是低视力用户与窄屏设备共同的下限。",
+            en: "WCAG 1.4.10 requires vertically scrolling content to avoid two-dimensional scrolling at an equivalent width of 320 CSS pixels, and 1.4.4 requires text to remain usable at 200% zoom. Together they turn responsiveness into something testable: 320px equals a 1280px viewport at 400% zoom, a floor shared by low-vision users and small devices.",
+          },
+          {
+            zh: "最常见的两个失分点：固定宽度容器在 320px 下溢出（要用 max-width 与 min()，而不是定宽）；以及字号用 px 写死后，用户改系统字号或浏览器缩放时文本不跟随。字体用 rem 是同时满足 1.4.4 与用户偏好的最低成本做法。",
+            en: "Two failures account for most of it: a fixed-width container overflowing at 320px (use max-width and min() instead of a hard width), and px-only type that ignores system font size or browser zoom. Sizing text in rem is the cheapest way to satisfy 1.4.4 and user preference at once.",
+          },
+        ],
+        code: {
+          label: "320px 与 200% 字号都能过的写法",
+          text: `/* ✅ 容器：先算可用宽度，再封上限 */
+.shell {
+  width: min(100% - 32px, 1160px);   /* 窄屏自动留两侧边距 */
+  margin-inline: auto;
+}
+
+/* ✅ 字号：用 rem，跟随用户设置与缩放 */
+body { font-size: 1rem; }            /* 16px 基准，可被用户覆盖 */
+h1   { font-size: clamp(1.5rem, 1rem + 2vw, 2.5rem); }
+
+/* ✅ 代码与图片：不撑破容器 */
+pre, img { max-width: 100%; }`,
+        },
+      },
+      {
+        id: "test",
+        heading: { zh: "五个动作：不装插件也能测", en: "Five checks that need no plugins" },
+        body: [
+          {
+            zh: "可访问性测试的门槛比想象低：键盘与缩放浏览器本身就能完成大半；读屏器（Windows 上的 NVDA、macOS/iOS 上的 VoiceOver）都免费。把下面五个动作固定成提交前的例行检查，能拦住绝大多数布局相关的可访问性问题。",
+            en: "Accessibility testing is cheaper than it looks: the keyboard and browser zoom cover most of it, and screen readers — NVDA on Windows, VoiceOver on macOS and iOS — are free. Making the five actions below a routine before committing catches nearly every layout-related accessibility problem.",
+          },
+        ],
+        list: [
+          { zh: "① 只用键盘走一遍：Tab 顺序是否与视觉顺序一致，焦点环是否始终可见，Esc 能否关闭浮层。", en: "① Walk the page with the keyboard only: does tab order match the visual order, is the focus ring always visible, does Escape close overlays." },
+          { zh: "② 缩到 320px 再把字号放大到 200%：不出现横向滚动，不丢内容。", en: "② Shrink to 320px and raise the font size to 200%: no horizontal scrolling and nothing lost." },
+          { zh: "③ 打开读屏器列出地标与标题：地标是否齐全、标题层级是否连续。", en: "③ List landmarks and headings with a screen reader: are all landmarks present and is the heading outline continuous." },
+          { zh: "④ 检查可访问名称：图标按钮、表单控件、图片是否都有可朗读的名字。", en: "④ Check accessible names: do icon buttons, form controls and images all have something to announce." },
+          { zh: "⑤ 用 DevTools 的 Accessibility 面板看无障碍树，确认地标与名称真的进了树，而不只是写在属性里。", en: "⑤ Inspect the accessibility tree in DevTools and confirm landmarks and names actually reached it, not just the attributes." },
+        ],
+        table: {
+          head: [{ zh: "检查项", en: "Check" }, { zh: "用什么", en: "Tool" }, { zh: "通过标准", en: "Passes when" }],
+          rows: [
+            [{ zh: "键盘顺序", en: "Focus order" }, { zh: "只用 Tab / Shift+Tab", en: "Tab and Shift+Tab only" }, { zh: "顺序与视觉一致，焦点环始终可见", en: "Order matches the visuals and the focus ring is always visible" }],
+            [{ zh: "320px 重排", en: "320px reflow" }, { zh: "把窗口缩到 320px", en: "Shrink the window to 320px" }, { zh: "没有横向滚动（WCAG 1.4.10）", en: "No horizontal scrolling (WCAG 1.4.10)" }],
+            [{ zh: "200% 字号", en: "200% text" }, { zh: "浏览器缩放或系统字号", en: "Browser zoom or system font size" }, { zh: "不丢内容、不重叠（WCAG 1.4.4）", en: "Nothing lost or overlapping (WCAG 1.4.4)" }],
+            [{ zh: "地标与标题", en: "Landmarks and headings" }, { zh: "读屏器的地标/标题列表", en: "The screen reader's landmark and heading lists" }, { zh: "地标齐全、标题层级连续", en: "All landmarks present and the outline continuous" }],
+            [{ zh: "可访问名称", en: "Accessible names" }, { zh: "DevTools Accessibility 面板", en: "DevTools accessibility pane" }, { zh: "图标按钮与表单控件都有名字", en: "Icon buttons and form controls all have names" }],
+          ],
+        },
+      },
+    ],
+    checklist: [
+      { zh: "能用一句话解释 DOM 顺序、焦点顺序与视觉顺序为什么应该同源。", en: "You can explain in one sentence why DOM, focus and visual order should share a source." },
+      { zh: "页面有恰当地标、可跳转的 skip link 与连续的标题层级。", en: "The page has proper landmarks, a working skip link and a continuous heading outline." },
+      { zh: "在 320px 与 200% 字号下都通过检查。", en: "It passes at 320px and at 200% font size." },
+      { zh: "提交前跑过五个动作，包括一次真实的读屏器浏览。", en: "You ran the five checks before committing, including one real screen-reader pass." },
+    ],
+    bibliography: [
+      { label: "WCAG 2.2 · 1.4.10 Reflow", href: "https://www.w3.org/TR/WCAG22/#reflow", kind: "spec" },
+      { label: "WCAG 2.2 · 1.4.4 Resize Text", href: "https://www.w3.org/TR/WCAG22/#resize-text", kind: "spec" },
+      { label: "WCAG 2.2 · 2.4.3 Focus Order", href: "https://www.w3.org/TR/WCAG22/#focus-order", kind: "spec" },
+      { label: "WAI-ARIA APG · 地标区域", href: "https://www.w3.org/WAI/ARIA/apg/practices/landmark-regions/", kind: "spec" },
+      { label: "MDN · 可访问性", href: "https://developer.mozilla.org/docs/Web/Accessibility", kind: "docs" },
+    ],
+  },
 ];
 
 /* 「关于本课程」页的扩展区块：理论来源 / 设计原则 / 技术栈 / 质量保障 */
